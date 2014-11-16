@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Tree-Do</string>
+    <string name="action_about">About</string>
+    <string name="action_enable_backup">Enable sync</string>
+    <string name="action_disable_backup">Disable sync</string>
+    <string name="item">Item</string>
+    <string name="directory">Folder</string>
+    <string name="new_item">New item</string>
+    <string name="new_directory">New folder</string>
+    <string name="note_deleted">Note deleted</string>
+    <string name="cannot_enable_backup">Oooops, cannot enable google drive backup. Check your connectivity.</string>
+    <string name="backup_enabled_successfully">Setup successful. Your notes will be backed up at regular intervals.<p>You can check the backups in your google drive account.</p></string>
+    <string name="backup_disabled_successfully">Backup has been disabled successfully.</string>
+    <string name="ok">OK</string>
+    <string name="about"><![CDATA[<p>Tree-Do, The minimal todo list app.</p><p>Author: Martin Bonnin.<br><a href="http://mbonnin.net">http://mbonnin.net</a></p><p>Tree-Do name by Patou.</p><p>Cloud logo derived from Cloud Download by <a href="http://www.thenounproject.com/misirlou">misirlou</a> from the <a href="http://www.thenounproject.com">Noun Project</a>.<p><p>Tree logo derived from Tree by <a href="http://www.thenounproject.com/hy.drogu">Hysen Drogu</a> from the <a href="http://www.thenounproject.com">Noun Project</a>.</p>]]></string>
+</resources>

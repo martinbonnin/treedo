@@ -1,0 +1,17 @@
+<resources>
+    <style name="HoloPink"
+           parent="AppTheme">
+        <item name="colorPrimary">@color/muted</item>
+        <item name="colorPrimaryDark">@color/muted_dark</item>
+        <item name="colorAccent">@color/vibrant</item>
+        <item name="@android:actionBarStyle">@style/ActionBarAppTheme</item>
+    </style>
+
+    <style name="ActionBarAppTheme"
+        parent="@android:style/Widget.Holo.Light.ActionBar.Solid.Inverse">
+        <item name="android:background">@color/muted</item>
+        <item name="theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+        <item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
+    </style>
+
+</resources>
