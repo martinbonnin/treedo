@@ -319,7 +319,7 @@ public class ItemListView extends LinearLayout {
 
         }
 
-        Database.saveAsync(mParent);
+        Database.saveAsyncShallow(mParent);
     }
 
     private String getAction(MotionEvent ev) {

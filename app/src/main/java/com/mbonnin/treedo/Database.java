@@ -44,6 +44,26 @@ public class Database {
                     COLUMN_NAME_IS_A_DIRECTORY + " INTEGER," +
                     COLUMN_NAME_TEXT + " TEXT)";
 
+    public static void setRoot(Item mItem) {
+        sRoot = mItem;
+
+        saveAsyncDeep(mItem);
+
+        sID = 0;
+        findBiggestID(mItem);
+        sID++;
+    }
+
+    private static void findBiggestID(Item mItem) {
+        if (mItem.id > sID) {
+            sID = mItem.id;
+        }
+
+        for (Item child:mItem.children) {
+            findBiggestID(child);
+        }
+    }
+
     static class ItemDatabaseOpenHelper extends SQLiteOpenHelper {
         // If you change the database schema, you must increment the database version.
         public static final int DATABASE_VERSION = 1;
@@ -62,7 +82,7 @@ public class Database {
             InputStream inputStream = mContext.getResources().openRawResource(R.raw.tutorial);
             try {
                 Item root = Item.deserialize(inputStream);
-                save(sqLiteDatabase, root, Integer.MAX_VALUE);
+                save(sqLiteDatabase, root);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -195,7 +215,7 @@ public class Database {
                 public boolean handleMessage(Message msg) {
                     switch (msg.what) {
                         case MESSAGE_SAVE:
-                            save((Item) msg.obj, 1);
+                            save((Item) msg.obj);
                             break;
                     }
 
@@ -205,9 +225,21 @@ public class Database {
         }
     }
 
-    static void saveAsync(Item parent) {
+    static void saveAsyncShallow(Item item) {
         // we do a copy first as item are accessed from 2 threads
-        Item clone = parent.deepCopy(1);
+        Item clone = item.deepCopy(1);
+
+        saveAsync(clone);
+    }
+
+    static void saveAsyncDeep(Item item) {
+        // we do a copy first as item are accessed from 2 threads
+        Item clone = item.deepCopy(Integer.MAX_VALUE);
+
+        saveAsync(clone);
+    }
+
+    static void saveAsync(Item item) {
 
         if (sThread == null) {
             sThread = new WorkerThread("database worker");
@@ -216,23 +248,21 @@ public class Database {
             sThread.waitUntilReady();
         }
 
-        Message message = sThread.mHandler.obtainMessage(MESSAGE_SAVE, clone);
+        Message message = sThread.mHandler.obtainMessage(MESSAGE_SAVE, item);
         sThread.mHandler.sendMessage(message);
     }
 
-    static void save(SQLiteDatabase database, Item item, int depth) {
+    static void save(SQLiteDatabase database, Item item) {
         database.delete(TABLE_NAME, COLUMN_NAME_ID + "=" + Integer.toString(item.id), null);
         insertItem(database, item);
-        if (depth > 0) {
-            // delete everything just in case
-            database.delete(TABLE_NAME, COLUMN_NAME_PARENT + "=" + Integer.toString(item.id), null);
-            for (Item item2:item.children) {
-                save(database, item2, depth - 1);
-            }
+        // delete everything just in case
+        database.delete(TABLE_NAME, COLUMN_NAME_PARENT + "=" + Integer.toString(item.id), null);
+        for (Item item2:item.children) {
+            save(database, item2);
         }
     }
 
-    static void save(Item item, int depth) {
-        save(sDatabase, item, depth);
+    static void save(Item item) {
+        save(sDatabase, item);
     }
 }

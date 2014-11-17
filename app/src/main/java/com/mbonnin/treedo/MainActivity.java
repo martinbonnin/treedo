@@ -2,21 +2,21 @@ package com.mbonnin.treedo;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.app.ActionBar;
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
+import android.util.TypedValue;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.Menu;
@@ -24,27 +24,30 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
+import android.widget.AdapterView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import com.mbonnin.treedo.BackupManager.GDrive;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Stack;
 
-import static android.util.TypedValue.COMPLEX_UNIT_DIP;
-import static android.util.TypedValue.applyDimension;
 
-
-public class MainActivity extends ActionBarActivity implements BackupManager.Listener, GoogleApiClient.OnConnectionFailedListener {
+public class MainActivity extends ActionBarActivity implements GoogleApiClient.OnConnectionFailedListener {
 
     private static final int MENU_ID_ABOUT = 0;
     private static final int MENU_ID_ENABLE_BACKUP = 1;
     private static final int MENU_ID_DISABLE_BACKUP = 2;
+    private static final int MENU_ID_IMPORT = 3;
 
     private static final String PREFERENCE_ENABLE_BACKUP = "enable_backup";
 
@@ -176,7 +179,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
 
         Utils.init(this, (0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)));
         mBackupManager = new BackupManager(this, new Handler(), this);
-        mBackupManager.setListener(this);
 
         mTopLayout = new FrameLayout(this);
         mFrameLayout = new FrameLayout(this);
@@ -207,6 +209,9 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
     public boolean onCreateOptionsMenu(Menu menu) {
         int order = 0;
         SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+
+        menu.add(Menu.NONE, MENU_ID_IMPORT, order++, getString(R.string.action_import));
+
         if (preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false)) {
             menu.add(Menu.NONE, MENU_ID_DISABLE_BACKUP, order++, getString(R.string.action_disable_backup));
         } else {
@@ -236,8 +241,89 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
             case MENU_ID_DISABLE_BACKUP:
                 disableBackup();
                 return true;
+            case MENU_ID_IMPORT:
+                importBackup();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    class ImportTask extends AsyncTask<Void, Void, Integer> {
+        GDrive mDrive;
+        Item mItem;
+
+        public ImportTask(GDrive drive) {
+            mDrive = drive;
+            showProgressBar();
+        }
+
+        @Override
+        protected Integer doInBackground(Void... params) {
+            BackupManager.GFile file = mBackupManager.blockingOpenFile(mDrive);
+
+            try {
+                mItem = Item.deserialize(file.inputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            mBackupManager.blockingCloseFile(file);
+            return 0;
+        }
+
+        protected void onPostExecute(Integer dummy) {
+            if (mItem != null) {
+                mFrameLayout.removeAllViews();
+                listViewStack.clear();
+                Database.setRoot(mItem);
+                pushListView(mItem, false);
+            }
+            hideProgressBar();
+        }
+    }
+
+    private void importBackup() {
+        final DialogBuilder builder = new DialogBuilder(this);
+
+        builder.setTitle(getString(R.string.select_backup));
+        builder.setIcon(R.drawable.backup_import);
+        builder.setView(getLayoutInflater().inflate(R.layout.progress_bar, null));
+        builder.setButtonLabel(getString(R.string.cancel));
+        builder.setListener(new DialogBuilder.Listener() {
+            @Override
+            public void onButtonClick() {
+
+            }
+        });
+
+        final AlertDialog dialog = builder.show();
+
+        final AdapterView.OnItemClickListener clickListener = new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                GDrive drive = (GDrive) parent.getItemAtPosition(position);
+                ImportTask task = new ImportTask(drive);
+
+                dialog.dismiss();
+                task.execute();
+            }
+        };
+
+        BackupManager.DrivesCallback callback = new BackupManager.DrivesCallback() {
+            @Override
+            public void onDrives(ArrayList<BackupManager.GDrive> drives) {
+                if (drives != null) {
+                    Context context = MainActivity.this;
+                    BackupAdapter adapter = new BackupAdapter(context, drives);
+                    ListView listView = new ListView(context);
+                    listView.setAdapter(adapter);
+                    listView.setOnItemClickListener(clickListener);
+                    builder.setView(listView);
+                }
+            }
+        };
+
+        mBackupManager.getBackups(callback);
     }
 
     private void disableBackup() {
@@ -247,28 +333,26 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
 
         mBackupManager.disconnect();
 
-        showBackupDialog(R.string.backup_disabled_successfully);
-    }
-
-    private int toPixels(int dp) {
-        return (int)applyDimension(COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
+        showBackupDialog(R.string.backup_disabled_successfully, false);
     }
 
     private void showAboutDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
-        View view = getLayoutInflater().inflate(R.layout.about_alert, null);
-        TextView textView = (TextView)view.findViewById(R.id.message);
+        DialogBuilder builder = new DialogBuilder(this);
+        ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
+        builder.setTitle(getString(R.string.action_about));
+        builder.setIcon(R.drawable.about);
+
+        ScrollView scrollView = new ScrollView(this);
+        TextView textView = new TextView(this);
+        textView.setTextColor(Color.WHITE);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         textView.setText(Html.fromHtml(getString(R.string.about)));
         textView.setMovementMethod(LinkMovementMethod.getInstance());
-        builder.setView(view);
+        scrollView.addView(textView, layoutParams);
 
-        builder.setNeutralButton(R.string.ok, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
+        builder.setView(scrollView);
+
         builder.show();
     }
 
@@ -288,20 +372,22 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
     }
 
 
-    private void showBackupDialog(int message_id) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
-        View view = getLayoutInflater().inflate(R.layout.backup_alert, null);
-        TextView textView = (TextView)view.findViewById(R.id.message);
+    private void showBackupDialog(int message_id, boolean success) {
+        DialogBuilder builder = new DialogBuilder(this);
 
+        if (success) {
+            builder.setIcon(R.drawable.backup_on);
+        } else {
+            builder.setIcon(R.drawable.backup_off);
+        }
+        builder.setTitle(getString(R.string.app_name));
+        TextView textView = new TextView(this);
+        textView.setTextColor(Color.WHITE);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP,18);
         textView.setText(message_id);
-        builder.setView(view);
 
-        builder.setNeutralButton(R.string.ok, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
+        builder.setView(textView);
+
         builder.show();
     }
 
@@ -312,13 +398,12 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
         if (requestCode == REQUEST_CODE_BACKUP_RESOLVED) {
             if (resultCode == RESULT_OK) {
                 Utils.log("Backup resolution ok, try again");
-                mBackupManager.connect();
+                mBackupManager.retry();
             } else {
                 /*AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setMessage(R.string.cannot_enable_backup);
                 builder.show();*/
-                disableBackup();
-                hideProgressBar();
+                mBackupManager.connectAborted();
             }
         }
     }
@@ -329,7 +414,18 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
         invalidateOptionsMenu();
 
         showProgressBar();
-        mBackupManager.connect();
+
+        final BackupManager.ConnectCallback callback = new BackupManager.ConnectCallback() {
+            @Override
+            public void onConnected(boolean success) {
+                if (success) {
+                    showBackupDialog(R.string.backup_enabled_successfully, true);
+                }
+                hideProgressBar();
+            }
+        };
+
+        mBackupManager.connect(callback);
     }
 
     protected void onStop() {
@@ -339,27 +435,17 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
             listViewStack.peek().sync();
         }
 
-        mBackupManager.save(Database.getRoot(this));
+        BackupManager.SaveCallback callback = new BackupManager.SaveCallback() {
+            @Override
+            public void onSave(boolean success) {
+                hideProgressBar();
+            }
+        };
+
+        showProgressBar();
+        mBackupManager.save(Database.getRoot(this), callback);
     }
 
-    @Override
-    public void onConnected() {
-        Utils.log("BackupManager.onConnected");
-        if (mBackupManagerFirstSetup) {
-            mBackupManagerFirstSetup = false;
-            showBackupDialog(R.string.backup_enabled_successfully);
-        }
-
-        mBackupManager.save(Database.getRoot(this));
-        hideProgressBar();
-
-    }
-
-    @Override
-    public void onSaveDone(int ret) {
-        hideProgressBar();
-
-    }
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
@@ -367,14 +453,11 @@ public class MainActivity extends ActionBarActivity implements BackupManager.Lis
             try {
                 connectionResult.startResolutionForResult(MainActivity.this, REQUEST_CODE_BACKUP_RESOLVED);
             } catch (IntentSender.SendIntentException e) {
-                // Unable to resolve, message user appropriately
-                disableBackup();
-                hideProgressBar();
+                mBackupManager.connectAborted();
             }
         } else {
             GooglePlayServicesUtil.getErrorDialog(connectionResult.getErrorCode(), MainActivity.this, 0).show();
-            disableBackup();
-            hideProgressBar();
+            mBackupManager.connectAborted();
         }
     }
 }
