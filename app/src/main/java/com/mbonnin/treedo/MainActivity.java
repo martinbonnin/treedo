@@ -1,18 +1,20 @@
 package com.mbonnin.treedo;
 
+import android.accounts.AccountManager;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -31,36 +33,44 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import com.mbonnin.treedo.BackupManager.GDrive;
 
-import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.auth.GoogleAuthUtil;
+import com.google.android.gms.auth.GooglePlayServicesAvailabilityException;
+import com.google.android.gms.auth.UserRecoverableAuthException;
+import com.google.android.gms.common.AccountPicker;
+
 import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.common.api.GoogleApiClient;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Stack;
 
 
-public class MainActivity extends ActionBarActivity implements GoogleApiClient.OnConnectionFailedListener {
+public class MainActivity extends ActionBarActivity implements RESTBackupManager.OAuthManager {
 
     private static final int MENU_ID_ABOUT = 0;
     private static final int MENU_ID_ENABLE_BACKUP = 1;
     private static final int MENU_ID_DISABLE_BACKUP = 2;
-    private static final int MENU_ID_IMPORT = 3;
 
     private static final String PREFERENCE_ENABLE_BACKUP = "enable_backup";
+    private static final String PREFERENCE_OAUTH_TOKEN = "oauth_token";
 
-    public static final int REQUEST_CODE_BACKUP_RESOLVED = 1;
+    public static final int REQUEST_CODE_CHOOSE_ACCOUNT = 1;
+    private static final int REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR = 2;
+    private static final int MENU_ID_IMPORT = 3;
+    private static final int MENU_ID_FLUSH_DATABASE = 4;
 
     private FrameLayout mFrameLayout;
     private Stack<ItemListView> listViewStack = new Stack<ItemListView>();
     private android.support.v7.app.ActionBar mActionBar;
-    private BackupManager mBackupManager;
-    private boolean mBackupManagerFirstSetup;
+    private RESTBackupManager mBackupManager;
     private FrameLayout mTopLayout;
     private com.mbonnin.treedo.ProgressBar mProgressBar;
     private int mShowProgressBar;
+
+    RESTBackupManager.OAuthTokenCallback mOAuthCallback;
+    private String mOAuthScope;
+    private String mOAuthEmail;
+    private boolean mIsDebuggable;
 
     private void updateActionBar() {
         if (listViewStack.size() > 1) {
@@ -125,6 +135,8 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
 
         updateActionBar();
         Utils.log("pushListView2() took " + (System.currentTimeMillis() - start) + " ms");
+
+        saveData();
     }
 
     public void onBackPressed() {
@@ -171,14 +183,23 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
 
             }
         });
+
+        saveData();
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Utils.init(this, (0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE)));
-        mBackupManager = new BackupManager(this, new Handler(), this);
+        mIsDebuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+
+        Utils.init(this, mIsDebuggable);
+
+        String lastOAuthToken = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_TOKEN, "");
+        if (lastOAuthToken.equals("")) {
+            lastOAuthToken = null;
+        }
+        mBackupManager = new RESTBackupManager(this, this, lastOAuthToken);
 
         mTopLayout = new FrameLayout(this);
         mFrameLayout = new FrameLayout(this);
@@ -218,6 +239,9 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
             menu.add(Menu.NONE, MENU_ID_ENABLE_BACKUP, order++, getString(R.string.action_enable_backup));
         }
 
+        if (mIsDebuggable) {
+            menu.add(Menu.NONE, MENU_ID_FLUSH_DATABASE, order++, getString(R.string.flush_database));
+        }
         menu.add(Menu.NONE, MENU_ID_ABOUT, order++, getString(R.string.action_about));
         return true;
     }
@@ -235,11 +259,13 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
                 }
                 return true;
             case MENU_ID_ENABLE_BACKUP:
-                mBackupManagerFirstSetup = true;
                 enableBackup();
                 return true;
             case MENU_ID_DISABLE_BACKUP:
                 disableBackup();
+                return true;
+            case MENU_ID_FLUSH_DATABASE:
+                flushDatabase();
                 return true;
             case MENU_ID_IMPORT:
                 importBackup();
@@ -248,42 +274,43 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
         return super.onOptionsItemSelected(item);
     }
 
-    class ImportTask extends AsyncTask<Void, Void, Integer> {
-        GDrive mDrive;
-        Item mItem;
+    private void setRootItem(Item item) {
+        mFrameLayout.removeAllViews();
+        listViewStack.clear();
+        Database.setRoot(item);
+        Database.saveAsync(item);
+        pushListView(item, false);
+    }
 
-        public ImportTask(GDrive drive) {
-            mDrive = drive;
-            showProgressBar();
+    private void flushDatabase() {
+        Item item = new Item(0);
+        item.parent = -1;
+
+        setRootItem(item);
+    }
+
+    @Override
+    public void getNewOAuthToken(RESTBackupManager.OAuthTokenCallback callback, String scope) {
+        if (mOAuthCallback != null) {
+            Utils.log("We cannot request 2 tokens at the same time");
+            return;
         }
+        String[] accountTypes = new String[]{"com.google"};
+        Intent intent = AccountPicker.newChooseAccountIntent(null, null,
+                accountTypes, false, null, null, null, null);
+        mOAuthCallback = callback;
+        mOAuthScope = scope;
 
-        @Override
-        protected Integer doInBackground(Void... params) {
-            BackupManager.GFile file = mBackupManager.blockingOpenFile(mDrive);
-
-            try {
-                mItem = Item.deserialize(file.inputStream);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            mBackupManager.blockingCloseFile(file);
-            return 0;
-        }
-
-        protected void onPostExecute(Integer dummy) {
-            if (mItem != null) {
-                mFrameLayout.removeAllViews();
-                listViewStack.clear();
-                Database.setRoot(mItem);
-                pushListView(mItem, false);
-            }
-            hideProgressBar();
-        }
+        startActivityForResult(intent, REQUEST_CODE_CHOOSE_ACCOUNT);
     }
 
     private void importBackup() {
         final DialogBuilder builder = new DialogBuilder(this);
+
+        if (!isConnected()) {
+            showBackupDialog(R.string.connection_needed, false);
+            return;
+        }
 
         builder.setTitle(getString(R.string.select_backup));
         builder.setIcon(R.drawable.backup_import);
@@ -298,20 +325,32 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
 
         final AlertDialog dialog = builder.show();
 
-        final AdapterView.OnItemClickListener clickListener = new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                GDrive drive = (GDrive) parent.getItemAtPosition(position);
-                ImportTask task = new ImportTask(drive);
-
-                dialog.dismiss();
-                task.execute();
+        final RESTBackupManager.BackupCallback backupCallback = new RESTBackupManager.BackupCallback() {
+            public void onBackupDone(Item backup) {
+                if (backup != null) {
+                    setRootItem(backup);
+                } else {
+                    showBackupDialog(R.string.get_backup_failed, false);
+                }
+                hideProgressBar();
             }
         };
 
-        BackupManager.DrivesCallback callback = new BackupManager.DrivesCallback() {
+        final AdapterView.OnItemClickListener clickListener = new AdapterView.OnItemClickListener() {
             @Override
-            public void onDrives(ArrayList<BackupManager.GDrive> drives) {
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                RESTBackupManager.Drive drive = (RESTBackupManager.Drive) parent.getItemAtPosition(position);
+                showProgressBar();
+
+                mBackupManager.getBackup(drive, backupCallback);
+
+                dialog.dismiss();
+            }
+        };
+
+        RESTBackupManager.DrivesCallback callback = new RESTBackupManager.DrivesCallback() {
+            @Override
+            public void onDrives(ArrayList<RESTBackupManager.Drive> drives) {
                 if (drives != null) {
                     Context context = MainActivity.this;
                     BackupAdapter adapter = new BackupAdapter(context, drives);
@@ -323,16 +362,22 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
             }
         };
 
-        mBackupManager.getBackups(callback);
+        mBackupManager.getBackupList(callback);
+    }
+
+    private void setBackupEnabled(boolean enabled) {
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        preferences.edit().putBoolean(PREFERENCE_ENABLE_BACKUP, enabled).apply();
+        invalidateOptionsMenu();
+    }
+
+    private boolean hasBackupEnabled() {
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        return preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false);
     }
 
     private void disableBackup() {
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        preferences.edit().putBoolean(PREFERENCE_ENABLE_BACKUP, false).apply();
-        invalidateOptionsMenu();
-
-        mBackupManager.disconnect();
-
+        setBackupEnabled(false);
         showBackupDialog(R.string.backup_disabled_successfully, false);
     }
 
@@ -391,36 +436,131 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
         builder.show();
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    public class TokenTask extends AsyncTask <Void, Void, Integer> {
+        String mEmail;
+        String mScope;
+        String mToken;
+        Exception mException;
 
-        if (requestCode == REQUEST_CODE_BACKUP_RESOLVED) {
-            if (resultCode == RESULT_OK) {
-                Utils.log("Backup resolution ok, try again");
-                mBackupManager.retry();
+        TokenTask(String email, String scope) {
+            this.mScope = scope;
+            this.mEmail = email;
+        }
+
+        /**
+         * Executes the asynchronous job. This runs when you call execute()
+         * on the AsyncTask instance.
+         */
+        @Override
+        protected Integer doInBackground(Void... params) {
+            try {
+                mToken = GoogleAuthUtil.getToken(MainActivity.this, mEmail, mScope);
+                if (mToken != null) {
+                    getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_TOKEN, mToken).apply();
+                }
+            } catch (Exception e) {
+                mException = e;
+            }
+            return 0;
+        }
+
+        @Override
+        protected void onPostExecute(Integer integer) {
+            if (mException != null) {
+                if (mException instanceof GooglePlayServicesAvailabilityException) {
+                    // The Google Play services APK is old, disabled, or not present.
+                    // Show a dialog created by Google Play services that allows
+                    // the user to update the APK
+                    int statusCode = ((GooglePlayServicesAvailabilityException)mException)
+                            .getConnectionStatusCode();
+                    Dialog dialog = GooglePlayServicesUtil.getErrorDialog(statusCode,
+                            MainActivity.this,
+                            REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR);
+                    dialog.show();
+                } else if (mException instanceof UserRecoverableAuthException) {
+                    // Unable to authenticate, such as when the user has not yet granted
+                    // the app access to the account, but the user can fix this.
+                    // Forward the user to an activity in Google Play services.
+                    Intent intent = ((UserRecoverableAuthException)mException).getIntent();
+                    startActivityForResult(intent,
+                            REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR);
+                } else {
+                    // IO exception or other
+                    mOAuthCallback.onOAuthToken(mToken);
+                    mOAuthCallback = null;
+                }
             } else {
-                /*AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage(R.string.cannot_enable_backup);
-                builder.show();*/
-                mBackupManager.connectAborted();
+                mOAuthCallback.onOAuthToken(mToken);
+                mOAuthCallback = null;
             }
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_CHOOSE_ACCOUNT) {
+            if (mOAuthCallback == null) {
+                Utils.log("onActivityResult with mOAuthCallback null");
+                return;
+            }
+
+            if (resultCode == RESULT_OK) {
+                Utils.log("User account ok");
+                mOAuthEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+
+                TokenTask task = new TokenTask(mOAuthEmail, mOAuthScope);
+                task.execute();
+            } else {
+                mOAuthCallback.onOAuthToken(null);
+                mOAuthCallback = null;
+            }
+        } else if (requestCode == REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR) {
+            TokenTask task = new TokenTask(mOAuthEmail, mOAuthScope);
+            task.execute();
+        }
+    }
+
+    private boolean isConnected() {
+        ConnectivityManager connMgr = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        if (networkInfo != null && networkInfo.isConnected()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void doBackup() {
+        showProgressBar();
+        RESTBackupManager.SaveCallback callback = new RESTBackupManager.SaveCallback() {
+            @Override
+            public void onSave(boolean success) {
+                hideProgressBar();
+            }
+        };
+        mBackupManager.putBackup(Database.getRoot(MainActivity.this), callback);
+    }
     private void enableBackup() {
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        preferences.edit().putBoolean(PREFERENCE_ENABLE_BACKUP, true).apply();
-        invalidateOptionsMenu();
+        if (!isConnected()) {
+            showBackupDialog(R.string.connection_needed, false);
+            return;
+        }
 
         showProgressBar();
 
-        final BackupManager.ConnectCallback callback = new BackupManager.ConnectCallback() {
+        final RESTBackupManager.ConnectCallback callback = new RESTBackupManager.ConnectCallback() {
             @Override
-            public void onConnected(boolean success) {
+            public void onConnect(boolean success) {
                 if (success) {
+                    setBackupEnabled(true);
                     showBackupDialog(R.string.backup_enabled_successfully, true);
+                } else {
+                    showBackupDialog(R.string.backup_enabling_failed, false);
                 }
+                doBackup();
                 hideProgressBar();
             }
         };
@@ -430,34 +570,33 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.O
 
     protected void onStop() {
         super.onStop();
-        // save the current view
-        if (!listViewStack.empty()) {
-            listViewStack.peek().sync();
-        }
-
-        BackupManager.SaveCallback callback = new BackupManager.SaveCallback() {
-            @Override
-            public void onSave(boolean success) {
-                hideProgressBar();
-            }
-        };
-
-        showProgressBar();
-        mBackupManager.save(Database.getRoot(this), callback);
     }
 
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
 
-    @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-        if (connectionResult.hasResolution()) {
-            try {
-                connectionResult.startResolutionForResult(MainActivity.this, REQUEST_CODE_BACKUP_RESOLVED);
-            } catch (IntentSender.SendIntentException e) {
-                mBackupManager.connectAborted();
-            }
-        } else {
-            GooglePlayServicesUtil.getErrorDialog(connectionResult.getErrorCode(), MainActivity.this, 0).show();
-            mBackupManager.connectAborted();
+        if (!listViewStack.empty()) {
+            ItemListView listView = listViewStack.peek();
+            listView.sync();
         }
+
+        saveData();
+    }
+
+    private void saveData() {
+        if (hasBackupEnabled()) {
+            RESTBackupManager.SaveCallback callback = new RESTBackupManager.SaveCallback() {
+                @Override
+                public void onSave(boolean success) {
+                    //hideProgressBar();
+                }
+            };
+
+            //showProgressBar();
+            mBackupManager.putBackup(Database.getRoot(this), callback);
+        }
+
+        Database.saveAsync(Database.getRoot(this));
+        Database.sync();
     }
 }

@@ -54,7 +54,7 @@ public class Item implements Cloneable {
 
     @Override
     public String toString() {
-        return String.format("%3d. %20s - %3d", id, text, parent);
+        return String.format("%3d. %50s - %3d", id, text, parent);
     }
 
     public void serialize(OutputStream outputStream, int depth) throws IOException {
@@ -90,7 +90,10 @@ public class Item implements Cloneable {
     }
 
     public void serialize(OutputStream outputStream) throws IOException {
-        serialize(outputStream, 0);
+        // We do not want the
+        for (Item child: children) {
+            child.serialize(outputStream, 0);
+        }
     }
 
     static public Item deserialize(InputStream inputStream) throws IOException {
@@ -123,8 +126,13 @@ public class Item implements Cloneable {
 
             int spaceCount = 0;
             int i = 1;
-            while (line.charAt(i++) == ' ') {
+            while (i < line.length() && line.charAt(i++) == ' ') {
                 spaceCount++;
+            }
+
+            if (i == line.length()) {
+                // empty line, ignore
+                continue;
             }
 
             item.text = Utils.decode(line.substring(i - 1));

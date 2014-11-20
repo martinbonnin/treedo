@@ -6,7 +6,6 @@ import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.view.MotionEvent;
-import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewPropertyAnimator;
 import android.widget.LinearLayout;
@@ -39,6 +38,10 @@ public class ItemListView extends LinearLayout {
 
     public String getTitle() {
         return mParent.text;
+    }
+
+    public Item getParentItem() {
+        return mParent;
     }
 
     static interface Listener {
@@ -170,7 +173,6 @@ public class ItemListView extends LinearLayout {
                     ItemView previousView = getItemViewAt(index - 1);
 
                     Item item = itemView.getItem();
-                    Database.deleteItem(item);
                     mParent.children.remove(item);
 
                     if (index == getItemViewCount() - 1) {
@@ -318,8 +320,6 @@ public class ItemListView extends LinearLayout {
             }
 
         }
-
-        Database.saveAsyncShallow(mParent);
     }
 
     private String getAction(MotionEvent ev) {

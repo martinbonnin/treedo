@@ -18,4 +18,8 @@
     <string name="about"><![CDATA[<p>Tree-Do, The hierarchical todo list app for control freaks.</p><p>Author: Martin Bonnin.<br><a href="http://mbonnin.net">http://mbonnin.net</a></p><p>Tree-Do name by Patou.</p><p>Tree logo derived from Tree by <a href="http://www.thenounproject.com/hy.drogu">Hysen Drogu</a> from the <a href="http://www.thenounproject.com">Noun Project</a>.</p>]]></string>
     <string name="select_backup">Select backup</string>
     <string name="cancel">Cancel</string>
+    <string name="backup_enabling_failed">Could not login for an unknown reason</string>
+    <string name="connection_needed">You must be connected to internet.</string>
+    <string name="get_backup_failed">Could not get your backups. Please check your google account.</string>
+    <string name="flush_database">Flush Database</string>
 </resources>

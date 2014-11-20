@@ -120,10 +120,7 @@ public class BackupManager implements GoogleApiClient.ConnectionCallbacks {
 
     private void writeItem(DriveContents driveContents, Item item) throws IOException {
         OutputStream outputStream = driveContents.getOutputStream();
-        // XXX: skip the root item...
-        for (Item child:item.children) {
-            child.serialize(outputStream);
-        }
+        item.serialize(outputStream);
         outputStream.close();
 
     }

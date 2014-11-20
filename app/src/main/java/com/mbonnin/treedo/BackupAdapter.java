@@ -14,11 +14,11 @@ import java.util.ArrayList;
  * Created by martin on 17/11/14.
  */
 public class BackupAdapter implements ListAdapter {
-    ArrayList<BackupManager.GDrive> mGDrives;
+    ArrayList<RESTBackupManager.Drive> mDrives;
     Context mContext;
 
-    public BackupAdapter(Context context, ArrayList<BackupManager.GDrive> gDrives) {
-        mGDrives = gDrives;
+    public BackupAdapter(Context context, ArrayList<RESTBackupManager.Drive> drives) {
+        mDrives = drives;
         mContext = context;
     }
 
@@ -34,12 +34,12 @@ public class BackupAdapter implements ListAdapter {
 
     @Override
     public int getCount() {
-        return mGDrives.size();
+        return mDrives.size();
     }
 
     @Override
     public Object getItem(int position) {
-        return mGDrives.get(position);
+        return mDrives.get(position);
     }
 
     @Override
@@ -57,7 +57,7 @@ public class BackupAdapter implements ListAdapter {
         View view = LayoutInflater.from(mContext).inflate(R.layout.backup_item, null);
         TextView textView = (TextView)view.findViewById(R.id.label);
 
-        textView.setText(mGDrives.get(position).title);
+        textView.setText(mDrives.get(position).title);
         return view;
     }
 

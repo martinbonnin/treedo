@@ -32,8 +32,8 @@ public class Database {
     private static int sID;
     private static WorkerThread sThread;
 
-    private static final int MESSAGE_SAVE = 0;
-    private static final int MESSAGE_QUIT = 1;
+    private static final int MESSAGE_SAVE = 1;
+    private static final int MESSAGE_SYNC = 2;
 
     private static final String SQL_CREATE_TABLE =
             "CREATE TABLE " + TABLE_NAME + " (" +
@@ -47,8 +47,6 @@ public class Database {
     public static void setRoot(Item mItem) {
         sRoot = mItem;
 
-        saveAsyncDeep(mItem);
-
         sID = 0;
         findBiggestID(mItem);
         sID++;
@@ -61,6 +59,24 @@ public class Database {
 
         for (Item child:mItem.children) {
             findBiggestID(child);
+        }
+    }
+
+    public static void sync() {
+        if (sThread != null) {
+            sendMessage(MESSAGE_SYNC, null);
+            boolean continueWaiting = true;
+            synchronized (sDatabase) {
+                while (continueWaiting) {
+                    try {
+                        sDatabase.wait();
+                        continueWaiting = false;
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            Utils.log("Database thread synced");
         }
     }
 
@@ -132,38 +148,39 @@ public class Database {
             }
             sID++;
 
-            sRoot = itemArrayList.get(0);
-            Item currentParent = null;
-            for (int i = 1; i < itemArrayList.size(); i++) {
-                Item item = itemArrayList.get(i);
-                if (currentParent != null && item.parent != currentParent.id) {
-                    currentParent = null;
-                }
+            if (itemArrayList.size() == 0) {
+                // might happen if we really mess the database;
+                sRoot = new Item(0);
+            } else {
+                sRoot = itemArrayList.get(0);
+                Item currentParent = null;
+                for (int i = 1; i < itemArrayList.size(); i++) {
+                    Item item = itemArrayList.get(i);
+                    if (currentParent != null && item.parent != currentParent.id) {
+                        currentParent = null;
+                    }
 
-                if (currentParent == null) {
-                    // XXX sort + binary search
-                    for (Item item2 : itemArrayList) {
-                        if (item2.id == item.parent) {
-                            currentParent = item2;
-                            break;
+                    if (currentParent == null) {
+                        // XXX sort + binary search
+                        for (Item item2 : itemArrayList) {
+                            if (item2.id == item.parent) {
+                                currentParent = item2;
+                                break;
+                            }
+                        }
+                        if (currentParent == null) {
+                            Utils.log("parent not found for item " + item.id + ", parent " + item.parent);
                         }
                     }
-                    if (currentParent == null) {
-                        Utils.log("parent not found for item " + item.id + ", parent " + item.parent);
-                    }
-                }
 
-                if (currentParent != null) {
-                    currentParent.children.add(item);
+                    if (currentParent != null) {
+                        currentParent.children.add(item);
+                    }
                 }
             }
         }
 
         return sRoot;
-    }
-
-    static private void insertOrUpdateItem(Item item, boolean insert) {
-        insertOrUpdateItem(sDatabase, item, insert);
     }
 
     static private void insertOrUpdateItem(SQLiteDatabase sqLiteDatabase, Item item, boolean insert) {
@@ -178,7 +195,7 @@ public class Database {
         if (insert) {
             sqLiteDatabase.insert(TABLE_NAME, null, values);
         } else {
-            sqLiteDatabase.update(TABLE_NAME, values, COLUMN_NAME_ID + "=" + Integer.toString(item.id), null);
+            sqLiteDatabase.update(TABLE_NAME, values, COLUMN_NAME_ID + "=" + item.id, null);
         }
     }
 
@@ -188,19 +205,8 @@ public class Database {
     }
 
     static void insertItem(SQLiteDatabase database, Item item) {
+        Utils.log("inserting item " + item.id);
         insertOrUpdateItem(database, item, true);
-    }
-
-    static void insertItem(Item item) {
-        insertOrUpdateItem(sDatabase, item, true);
-    }
-
-    static void updateItem(Item item) {
-        insertOrUpdateItem(item, false);
-    }
-
-    static void deleteItem(Item item) {
-        sDatabase.delete(TABLE_NAME, COLUMN_NAME_ID + "=" + Integer.toString(item.id), null);
     }
 
     static class WorkerThread extends HandlerThread {
@@ -215,7 +221,12 @@ public class Database {
                 public boolean handleMessage(Message msg) {
                     switch (msg.what) {
                         case MESSAGE_SAVE:
-                            save((Item) msg.obj);
+                            save(sDatabase, (Item) msg.obj);
+                            break;
+                        case MESSAGE_SYNC:
+                            synchronized (sDatabase) {
+                                sDatabase.notifyAll();
+                            }
                             break;
                     }
 
@@ -225,22 +236,7 @@ public class Database {
         }
     }
 
-    static void saveAsyncShallow(Item item) {
-        // we do a copy first as item are accessed from 2 threads
-        Item clone = item.deepCopy(1);
-
-        saveAsync(clone);
-    }
-
-    static void saveAsyncDeep(Item item) {
-        // we do a copy first as item are accessed from 2 threads
-        Item clone = item.deepCopy(Integer.MAX_VALUE);
-
-        saveAsync(clone);
-    }
-
-    static void saveAsync(Item item) {
-
+    private static void sendMessage(int what, Object param) {
         if (sThread == null) {
             sThread = new WorkerThread("database worker");
             sThread.start();
@@ -248,21 +244,29 @@ public class Database {
             sThread.waitUntilReady();
         }
 
-        Message message = sThread.mHandler.obtainMessage(MESSAGE_SAVE, item);
+        Message message = sThread.mHandler.obtainMessage(what, param);
         sThread.mHandler.sendMessage(message);
     }
 
-    static void save(SQLiteDatabase database, Item item) {
-        database.delete(TABLE_NAME, COLUMN_NAME_ID + "=" + Integer.toString(item.id), null);
+    static void saveAsync(Item item) {
+        // we do a copy first as item are accessed from 2 threads
+        Item clone = item.deepCopy(Integer.MAX_VALUE);
+
+        sendMessage(MESSAGE_SAVE, clone);
+    }
+
+    private static void add(SQLiteDatabase database, Item item) {
         insertItem(database, item);
-        // delete everything just in case
-        database.delete(TABLE_NAME, COLUMN_NAME_PARENT + "=" + Integer.toString(item.id), null);
         for (Item item2:item.children) {
-            save(database, item2);
+            add(database, item2);
         }
     }
 
-    static void save(Item item) {
-        save(sDatabase, item);
+    private static void save(SQLiteDatabase database, Item item) {
+        database.beginTransaction();
+        database.delete(TABLE_NAME, null, null);
+        add(database, item);
+        database.setTransactionSuccessful();
+        database.endTransaction();
     }
 }
