@@ -47,7 +47,7 @@ import java.util.ArrayList;
 import java.util.Stack;
 
 
-public class MainActivity extends ActionBarActivity implements RESTBackupManager.OAuthManager {
+public class MainActivity extends ActionBarActivity implements BackupManager.OAuthManager {
 
     private static final int MENU_ID_ABOUT = 0;
     private static final int MENU_ID_ENABLE_BACKUP = 1;
@@ -66,12 +66,12 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
     private FrameLayout mFrameLayout;
     private Stack<ItemListView> listViewStack = new Stack<ItemListView>();
     private android.support.v7.app.ActionBar mActionBar;
-    private RESTBackupManager mBackupManager;
+    private BackupManager mBackupManager;
     private FrameLayout mTopLayout;
     private com.mbonnin.treedo.ProgressBar mProgressBar;
     private int mShowProgressBar;
 
-    RESTBackupManager.OAuthTokenCallback mOAuthCallback;
+    BackupManager.OAuthTokenCallback mOAuthCallback;
     private String mOAuthScope;
     private String mOAuthEmail;
     private String mOAuthToken;
@@ -205,7 +205,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
 
         mOAuthToken = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_TOKEN, "");
         mOAuthEmail = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_EMAIL, "");
-        mBackupManager = new RESTBackupManager(this, this, mOAuthToken);
+        mBackupManager = new BackupManager(this, this, mOAuthToken);
 
         mTopLayout = new FrameLayout(this);
         mFrameLayout = new FrameLayout(this);
@@ -316,7 +316,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
     }
 
     @Override
-    public void getNewOAuthToken(RESTBackupManager.OAuthTokenCallback callback, String scope) {
+    public void getNewOAuthToken(BackupManager.OAuthTokenCallback callback, String scope) {
         if (mOAuthCallback != null) {
             Utils.log("We cannot request 2 tokens at the same time");
             return;
@@ -358,7 +358,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
 
         final AlertDialog dialog = builder.show();
 
-        final RESTBackupManager.BackupCallback backupCallback = new RESTBackupManager.BackupCallback() {
+        final BackupManager.BackupCallback backupCallback = new BackupManager.BackupCallback() {
             public void onBackupDone(Item backup) {
                 if (backup != null) {
                     setRootItem(backup);
@@ -372,7 +372,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
         final AdapterView.OnItemClickListener clickListener = new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                RESTBackupManager.Drive drive = (RESTBackupManager.Drive) parent.getItemAtPosition(position);
+                BackupManager.Drive drive = (BackupManager.Drive) parent.getItemAtPosition(position);
                 showProgressBar();
 
                 mBackupManager.getBackup(drive, backupCallback);
@@ -381,9 +381,9 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
             }
         };
 
-        RESTBackupManager.DrivesCallback callback = new RESTBackupManager.DrivesCallback() {
+        BackupManager.DrivesCallback callback = new BackupManager.DrivesCallback() {
             @Override
-            public void onDrives(ArrayList<RESTBackupManager.Drive> drives) {
+            public void onDrives(ArrayList<BackupManager.Drive> drives) {
                 if (drives != null) {
                     Context context = MainActivity.this;
                     BackupAdapter adapter = new BackupAdapter(context, drives);
@@ -599,7 +599,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
     }
 
     private void putBackup() {
-        RESTBackupManager.SaveCallback callback = new RESTBackupManager.SaveCallback() {
+        BackupManager.SaveCallback callback = new BackupManager.SaveCallback() {
             @Override
             public void onSave(boolean success) {
             }
@@ -614,7 +614,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
 
         showProgressBar();
 
-        final RESTBackupManager.ConnectCallback callback = new RESTBackupManager.ConnectCallback() {
+        final BackupManager.ConnectCallback callback = new BackupManager.ConnectCallback() {
             @Override
             public void onConnect(boolean success) {
                 if (success) {

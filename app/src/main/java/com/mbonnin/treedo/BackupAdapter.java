@@ -14,10 +14,10 @@ import java.util.ArrayList;
  * Created by martin on 17/11/14.
  */
 public class BackupAdapter implements ListAdapter {
-    ArrayList<RESTBackupManager.Drive> mDrives;
+    ArrayList<BackupManager.Drive> mDrives;
     Context mContext;
 
-    public BackupAdapter(Context context, ArrayList<RESTBackupManager.Drive> drives) {
+    public BackupAdapter(Context context, ArrayList<BackupManager.Drive> drives) {
         mDrives = drives;
         mContext = context;
     }
