@@ -71,6 +71,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
     private String mOAuthScope;
     private String mOAuthEmail;
     private boolean mIsDebuggable;
+    private long mLastSaveTime;
 
     private void updateActionBar() {
         if (listViewStack.size() > 1) {
@@ -136,7 +137,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
         updateActionBar();
         Utils.log("pushListView2() took " + (System.currentTimeMillis() - start) + " ms");
 
-        saveData();
+        saveData(false);
     }
 
     public void onBackPressed() {
@@ -184,7 +185,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
             }
         });
 
-        saveData();
+        saveData(false);
     }
 
     @Override
@@ -517,8 +518,13 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
                 mOAuthCallback = null;
             }
         } else if (requestCode == REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR) {
-            TokenTask task = new TokenTask(mOAuthEmail, mOAuthScope);
-            task.execute();
+            if (resultCode == RESULT_OK) {
+                TokenTask task = new TokenTask(mOAuthEmail, mOAuthScope);
+                task.execute();
+            } else {
+                mOAuthCallback.onOAuthToken(null);
+                mOAuthCallback = null;
+            }
         }
     }
 
@@ -534,11 +540,9 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
     }
 
     private void doBackup() {
-        showProgressBar();
         RESTBackupManager.SaveCallback callback = new RESTBackupManager.SaveCallback() {
             @Override
             public void onSave(boolean success) {
-                hideProgressBar();
             }
         };
         mBackupManager.putBackup(Database.getRoot(MainActivity.this), callback);
@@ -557,10 +561,10 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
                 if (success) {
                     setBackupEnabled(true);
                     showBackupDialog(R.string.backup_enabled_successfully, true);
+                    doBackup();
                 } else {
                     showBackupDialog(R.string.backup_enabling_failed, false);
                 }
-                doBackup();
                 hideProgressBar();
             }
         };
@@ -580,22 +584,19 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
             listView.sync();
         }
 
-        saveData();
+        saveData(true);
     }
 
-    private void saveData() {
-        if (hasBackupEnabled()) {
-            RESTBackupManager.SaveCallback callback = new RESTBackupManager.SaveCallback() {
-                @Override
-                public void onSave(boolean success) {
-                    //hideProgressBar();
-                }
-            };
-
-            //showProgressBar();
-            mBackupManager.putBackup(Database.getRoot(this), callback);
+    private void saveData(boolean force) {
+        if (!force && System.currentTimeMillis() - mLastSaveTime < 5000) {
+            return;
         }
 
+        if (hasBackupEnabled()) {
+            doBackup();
+        }
+
+        mLastSaveTime = System.currentTimeMillis();
         Database.saveAsync(Database.getRoot(this));
         Database.sync();
     }

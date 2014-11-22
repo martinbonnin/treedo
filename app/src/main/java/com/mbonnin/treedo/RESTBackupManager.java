@@ -37,7 +37,6 @@ public class RESTBackupManager {
     private static String ENDPOINT_ABOUT = "https://www.googleapis.com/drive/v2/about";
     private static String ENDPOINT_DELETE = "https://www.googleapis.com/drive/v2/files/";
     private static String ENDPOINT_FILES = "https://www.googleapis.com/drive/v2/files";
-    private static String ENDPOINT_UPLOAD_FILES = "https://www.googleapis.com/upload/drive/v2/files";
     private static String TREEDO_FOLDER_NAME = "Tree-Do";
     private static final String ID_ROOT = "root";
     private static final String MIMETYPE_FOLDER = "application/vnd.google-apps.folder";
@@ -314,16 +313,24 @@ public class RESTBackupManager {
                     final DrivesCallback filesCallback = new DrivesCallback() {
                         @Override
                         public void onDrives(ArrayList<Drive> drives) {
-                            if (drives != null) {
-                                for (Drive drive:drives) {
-                                    deleteDrive(drive.id);
-                                }
+                            if (drives == null) {
+                                callback.onSave(false);
+                                return;
                             }
 
+                            for (int i = 1; i < drives.size(); i++) {
+                                Utils.log("delete extra backup");
+                                deleteDrive(drives.get(i).id);
+                            }
+
+                            String fileId = null;
+                            if (drives.size() > 0) {
+                                fileId = drives.get(0).id;
+                            }
                             ByteArrayOutputStream ostream = new ByteArrayOutputStream();
                             try {
                                 item.serialize(ostream);
-                                uploadTextContent(parentId, title, new String(ostream.toByteArray()), uploadCallback);
+                                uploadTextContent(parentId, fileId, title, new String(ostream.toByteArray()), uploadCallback);
                             } catch (IOException e) {
                                 e.printStackTrace();
                                 callback.onSave(false);
@@ -353,7 +360,7 @@ public class RESTBackupManager {
         sendJsonApiRequest(Request.Method.DELETE, url, null, apiCallback);
     }
 
-    private void uploadTextContent(String id, String title, String text, final UploadCallback callback) {
+    private void uploadTextContent(String parentId, String id, String title, String text, final UploadCallback callback) {
 
         final ApiRequestCallback apiCallback = new ApiRequestCallback() {
             @Override
@@ -361,9 +368,6 @@ public class RESTBackupManager {
                 callback.onUpload(object != null);
             }
         };
-
-        String url = ENDPOINT_UPLOAD_FILES;
-        url += "?uploadType=multipart";
 
         String boundary = "foo_bar_baz";
         String contentType = "multipart/related; boundary=\"" + boundary + "\"";
@@ -376,7 +380,7 @@ public class RESTBackupManager {
             root.put("title", title);
             JSONArray parents = new JSONArray();
             JSONObject parent = new JSONObject();
-            parent.put("id", id);
+            parent.put("id", parentId);
             parents.put(parent);
             root.put("parents", parents);
         } catch (JSONException e) {
@@ -393,7 +397,18 @@ public class RESTBackupManager {
 
         body += "\n" + "--" + boundary + "--\n";
 
-        sendApiRequest(Request.Method.POST, url, body.getBytes(), contentType, apiCallback, null);
+        int method;
+        String url = null;
+
+        if (id != null) {
+            url = "https://www.googleapis.com/upload/drive/v2/files/" + id;
+            method = Request.Method.PUT;
+        } else {
+            url = "https://www.googleapis.com/upload/drive/v2/files";
+            method = Request.Method.POST;
+        }
+        url += "?uploadType=multipart";
+        sendApiRequest(method, url, body.getBytes(), contentType, apiCallback, null);
     }
 
     private void createDrive(String parent, String title, String mimeType, final DriveCallback callback) {
