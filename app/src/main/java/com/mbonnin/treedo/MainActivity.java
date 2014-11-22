@@ -539,7 +539,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
         }
     }
 
-    private void doBackup() {
+    private void putBackup() {
         RESTBackupManager.SaveCallback callback = new RESTBackupManager.SaveCallback() {
             @Override
             public void onSave(boolean success) {
@@ -561,7 +561,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
                 if (success) {
                     setBackupEnabled(true);
                     showBackupDialog(R.string.backup_enabled_successfully, true);
-                    doBackup();
+                    putBackup();
                 } else {
                     showBackupDialog(R.string.backup_enabling_failed, false);
                 }
@@ -593,7 +593,7 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
         }
 
         if (hasBackupEnabled()) {
-            doBackup();
+            putBackup();
         }
 
         mLastSaveTime = System.currentTimeMillis();

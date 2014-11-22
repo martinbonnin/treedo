@@ -60,10 +60,8 @@ public class ItemListView extends LinearLayout {
 
     private ItemView getItemView() {
         if (sRecycledViews.size() > 0) {
-            Utils.log("reuse View");
             return sRecycledViews.pop();
         } else {
-            Utils.log("create View");
             return createItemView();
         }
 

@@ -205,7 +205,6 @@ public class Database {
     }
 
     static void insertItem(SQLiteDatabase database, Item item) {
-        Utils.log("inserting item " + item.id);
         insertOrUpdateItem(database, item, true);
     }
 
