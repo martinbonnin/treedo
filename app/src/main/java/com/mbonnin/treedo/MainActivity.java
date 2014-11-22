@@ -34,6 +34,7 @@ import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.GooglePlayServicesAvailabilityException;
 import com.google.android.gms.auth.UserRecoverableAuthException;
@@ -41,6 +42,7 @@ import com.google.android.gms.common.AccountPicker;
 
 import com.google.android.gms.common.GooglePlayServicesUtil;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Stack;
 
@@ -50,14 +52,16 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
     private static final int MENU_ID_ABOUT = 0;
     private static final int MENU_ID_ENABLE_BACKUP = 1;
     private static final int MENU_ID_DISABLE_BACKUP = 2;
+    private static final int MENU_ID_IMPORT = 3;
+    private static final int MENU_ID_FLUSH_DATABASE = 4;
+    private static final int MENU_ID_LOGOUT = 5;
 
     private static final String PREFERENCE_ENABLE_BACKUP = "enable_backup";
     private static final String PREFERENCE_OAUTH_TOKEN = "oauth_token";
+    private static final String PREFERENCE_OAUTH_EMAIL = "email";
 
     public static final int REQUEST_CODE_CHOOSE_ACCOUNT = 1;
     private static final int REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR = 2;
-    private static final int MENU_ID_IMPORT = 3;
-    private static final int MENU_ID_FLUSH_DATABASE = 4;
 
     private FrameLayout mFrameLayout;
     private Stack<ItemListView> listViewStack = new Stack<ItemListView>();
@@ -70,6 +74,8 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
     RESTBackupManager.OAuthTokenCallback mOAuthCallback;
     private String mOAuthScope;
     private String mOAuthEmail;
+    private String mOAuthToken;
+
     private boolean mIsDebuggable;
     private long mLastSaveTime;
 
@@ -196,11 +202,10 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
 
         Utils.init(this, mIsDebuggable);
 
-        String lastOAuthToken = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_TOKEN, "");
-        if (lastOAuthToken.equals("")) {
-            lastOAuthToken = null;
-        }
-        mBackupManager = new RESTBackupManager(this, this, lastOAuthToken);
+
+        mOAuthToken = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_TOKEN, "");
+        mOAuthEmail = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_EMAIL, "");
+        mBackupManager = new RESTBackupManager(this, this, mOAuthToken);
 
         mTopLayout = new FrameLayout(this);
         mFrameLayout = new FrameLayout(this);
@@ -244,6 +249,10 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
             menu.add(Menu.NONE, MENU_ID_FLUSH_DATABASE, order++, getString(R.string.flush_database));
         }
         menu.add(Menu.NONE, MENU_ID_ABOUT, order++, getString(R.string.action_about));
+
+        if (!mOAuthEmail.equals("") || !mOAuthToken.equals("")) {
+            menu.add(Menu.NONE, MENU_ID_LOGOUT, order++, getString(R.string.action_logout));
+        }
         return true;
     }
 
@@ -271,8 +280,24 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
             case MENU_ID_IMPORT:
                 importBackup();
                 return true;
+            case MENU_ID_LOGOUT:
+                logout();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void logout() {
+        mOAuthEmail = "";
+        mOAuthToken = "";
+        getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_EMAIL,"").apply();
+        getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_TOKEN, "").apply();
+
+        ClearTokenTask task = new ClearTokenTask(mOAuthToken) ;
+        task.execute();
+        mBackupManager.clearToken();
+        disableBackup();
+        invalidateOptionsMenu();
     }
 
     private void setRootItem(Item item) {
@@ -296,13 +321,20 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
             Utils.log("We cannot request 2 tokens at the same time");
             return;
         }
-        String[] accountTypes = new String[]{"com.google"};
-        Intent intent = AccountPicker.newChooseAccountIntent(null, null,
-                accountTypes, false, null, null, null, null);
+
         mOAuthCallback = callback;
         mOAuthScope = scope;
 
-        startActivityForResult(intent, REQUEST_CODE_CHOOSE_ACCOUNT);
+        if (mOAuthEmail.equals("")) {
+            String[] accountTypes = new String[]{"com.google"};
+            Intent intent = AccountPicker.newChooseAccountIntent(null, null,
+                    accountTypes, false, null, null, null, null);
+
+            startActivityForResult(intent, REQUEST_CODE_CHOOSE_ACCOUNT);
+        } else {
+            GetTokenTask task = new GetTokenTask(mOAuthEmail, scope);
+            task.execute();
+        }
     }
 
     private void importBackup() {
@@ -437,13 +469,39 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
         builder.show();
     }
 
-    public class TokenTask extends AsyncTask <Void, Void, Integer> {
+    public class ClearTokenTask extends AsyncTask <Void, Void, Void> {
+        String mToken;
+        Exception mException;
+
+        ClearTokenTask(String token) {
+            this.mToken = token;
+        }
+
+        /**
+         * Executes the asynchronous job. This runs when you call execute()
+         * on the AsyncTask instance.
+         */
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                GoogleAuthUtil.clearToken(MainActivity.this, mToken);
+            } catch (GoogleAuthException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+    }
+
+    public class GetTokenTask extends AsyncTask <Void, Void, Integer> {
         String mEmail;
         String mScope;
         String mToken;
         Exception mException;
 
-        TokenTask(String email, String scope) {
+        GetTokenTask(String email, String scope) {
             this.mScope = scope;
             this.mEmail = email;
         }
@@ -456,9 +514,6 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
         protected Integer doInBackground(Void... params) {
             try {
                 mToken = GoogleAuthUtil.getToken(MainActivity.this, mEmail, mScope);
-                if (mToken != null) {
-                    getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_TOKEN, mToken).apply();
-                }
             } catch (Exception e) {
                 mException = e;
             }
@@ -491,6 +546,8 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
                     mOAuthCallback = null;
                 }
             } else {
+                mOAuthToken = mToken;
+                getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_TOKEN, mToken).apply();
                 mOAuthCallback.onOAuthToken(mToken);
                 mOAuthCallback = null;
             }
@@ -510,16 +567,18 @@ public class MainActivity extends ActionBarActivity implements RESTBackupManager
             if (resultCode == RESULT_OK) {
                 Utils.log("User account ok");
                 mOAuthEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-
-                TokenTask task = new TokenTask(mOAuthEmail, mOAuthScope);
+                getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_EMAIL, mOAuthEmail).apply();
+                GetTokenTask task = new GetTokenTask(mOAuthEmail, mOAuthScope);
                 task.execute();
+
+                invalidateOptionsMenu();
             } else {
                 mOAuthCallback.onOAuthToken(null);
                 mOAuthCallback = null;
             }
         } else if (requestCode == REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR) {
             if (resultCode == RESULT_OK) {
-                TokenTask task = new TokenTask(mOAuthEmail, mOAuthScope);
+                GetTokenTask task = new GetTokenTask(mOAuthEmail, mOAuthScope);
                 task.execute();
             } else {
                 mOAuthCallback.onOAuthToken(null);

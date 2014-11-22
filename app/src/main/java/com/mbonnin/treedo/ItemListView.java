@@ -27,11 +27,7 @@ public class ItemListView extends LinearLayout {
 
     private static final long NO_POINTER_ID = Long.MAX_VALUE;
     private long mPointerID = NO_POINTER_ID;
-    private ItemFrontView mTouchedView;
     private Listener mListener;
-    private long mTouchedTime;
-    private final int longPressTimeout;
-    private ItemFrontView mTouchedDirectory;
 
     private static LinkedList<ItemView> sRecycledViews = new LinkedList<ItemView>();
     private ArrayList<ItemView> mItemViewList = new ArrayList<ItemView>();
@@ -56,15 +52,6 @@ public class ItemListView extends LinearLayout {
         Item item = Database.createItem();
         item.parent = mParent.id;
         return item;
-    }
-
-    private ItemView getItemView() {
-        if (sRecycledViews.size() > 0) {
-            return sRecycledViews.pop();
-        } else {
-            return createItemView();
-        }
-
     }
 
     private void collapseSpacerView(final SpacerView spacerView) {
@@ -143,8 +130,14 @@ public class ItemListView extends LinearLayout {
         itemView2.appendAndFocus(remainingText, true);
     }
 
-    private ItemView createItemView() {
-        final ItemView itemView = new ItemView(getContext());
+    private ItemView getItemView() {
+        final ItemView itemView;
+
+        if (sRecycledViews.size() > 0) {
+            itemView = sRecycledViews.pop();
+        } else {
+            itemView = new ItemView(getContext());
+        }
         final LayoutParams layoutParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 
         itemView.setListener(new ItemView.Listener() {
@@ -238,7 +231,6 @@ public class ItemListView extends LinearLayout {
         long start = System.currentTimeMillis();
 
         mContext = context;
-        longPressTimeout = ViewConfiguration.get(context).getLongPressTimeout();
 
         Collections.sort(parent.children, new Comparator<Item>() {
             @Override
@@ -319,76 +311,4 @@ public class ItemListView extends LinearLayout {
 
         }
     }
-
-    private String getAction(MotionEvent ev) {
-        switch (ev.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                return "DOWN";
-            case MotionEvent.ACTION_MOVE:
-                return "MOVE";
-            case MotionEvent.ACTION_UP:
-                return "UP";
-            case MotionEvent.ACTION_CANCEL:
-                return "CANCEl";
-        }
-
-        return "?";
-    }
-
-    /*private boolean interceptTouchEvent(MotionEvent ev) {
-        if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
-            int count;
-            count = getChildCount();
-            mTouchedView = null;
-            mTouchedDirectory = null;
-            int i = 0;
-            for (i = 0; i < count; i++) {
-                ItemView itemView = (ItemView) getChildAt(i);
-                Rect r = new Rect();
-                if (itemView.getGlobalVisibleRect(r) && r.contains((int) ev.getRawX(), (int) ev.getRawY())) {
-                    mTouchedView = itemView;
-                    break;
-                }
-            }
-
-            if (mTouchedView != null) {
-                mTouchedTime = System.currentTimeMillis();
-                if (mTouchedView.getItem().isADirectory && !mTouchedView.hasFocus()
-                        && i != count - 1) {
-                    mTouchedDirectory = mTouchedView;
-                    mTouchedDirectory.setBackgroundColor(Color.argb(30,0,0,0));
-                }
-            }
-        } else if (ev.getActionMasked() == MotionEvent.ACTION_UP) {
-            if (mTouchedDirectory != null) {
-                mTouchedDirectory.setBackgroundColor(Color.argb(0, 0, 0, 0));
-
-                if (System.currentTimeMillis() - mTouchedTime < 300) {
-                    if (mListener != null) {
-                        mListener.onDirectoryClicked(mTouchedDirectory.getItem());
-                    }
-
-                    // handle this event. We do not want the edittext to take the focus
-                    return true;
-                }
-            }
-        } else if (ev.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-            if (mTouchedDirectory != null) {
-                mTouchedDirectory.setBackgroundColor(Color.argb(0, 0, 0, 0));
-            }
-        }
-
-        return false;
-    }
-
-    public boolean onInterceptTouchEvent(MotionEvent ev) {
-        Utils.log("onInterceptTouchEvent " + getAction(ev));
-        return interceptTouchEvent(ev);
-    }
-
-    public boolean onTouchEvent(MotionEvent ev) {
-        Utils.log("onTouchEvent " + getAction(ev));
-        interceptTouchEvent(ev);
-        return true;
-    }*/
 }

@@ -228,6 +228,10 @@ public class RESTBackupManager {
 
     }
 
+    public void clearToken() {
+        setToken("");
+    }
+
     private void setToken(String token) {
         mToken = token;
         mHeaders.put("Authorization", "Bearer " + token);

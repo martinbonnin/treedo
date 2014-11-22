@@ -13,7 +13,7 @@
     <string name="note_deleted">Note deleted</string>
     <string name="cannot_enable_backup">Oooops, cannot enable google drive backup. Check your connectivity.</string>
     <string name="backup_enabled_successfully">Setup successful. Your notes will be backed up at regular intervals.<p>You can check the backups in your google drive account.</p></string>
-    <string name="backup_disabled_successfully">Backup has been disabled successfully.</string>
+    <string name="backup_disabled_successfully">Automatic backups have been disabled.</string>
     <string name="ok">OK</string>
     <string name="about"><![CDATA[<p>Tree-Do, The hierarchical todo list app for control freaks.</p><p>Author: Martin Bonnin.<br><a href="http://mbonnin.net">http://mbonnin.net</a></p><p>Tree-Do name by Patou.</p><p>Tree logo derived from Tree by <a href="http://www.thenounproject.com/hy.drogu">Hysen Drogu</a> from the <a href="http://www.thenounproject.com">Noun Project</a>.</p>]]></string>
     <string name="select_backup">Select backup</string>
@@ -22,4 +22,5 @@
     <string name="connection_needed">You must be connected to internet.</string>
     <string name="get_backup_failed">Could not get your backups. Please check your google account.</string>
     <string name="flush_database">Flush Database</string>
+    <string name="action_logout">Logout</string>
 </resources>
