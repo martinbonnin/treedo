@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -11,45 +12,43 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.widget.AdapterView;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
-
-import static android.util.TypedValue.*;
 
 /**
  * Created by martin on 18/08/14.
  */
 public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListener, ItemEditText.Listener {
     private Item mItem;
-    public EditText mEditText;
-    private ItemSpinner mSpinner;
-    private ImageView mPlus;
+    public ItemEditText mEditText;
+    private Spinner mSpinner;
+    private ImageView mPlusImageView;
     public CheckBox mCheckBox;
-    private MeasureSpec mMeasureSpec;
+    private View mLeftView;
+    private View mRightView;
 
     private Listener mListener;
 
+    int mRightWidthMeasureSpec;
+    int mRightHeightMeasureSpec;
+
     private int mFlags;
-    private ImageView mArrow;
-    private ImageView mDirectory;
+    private ImageView mArrowImageView;
+    private ImageView mDirectoryImageView;
     private int mSpinnerWidth;
     private int mHeight;
     private int mRemainingWidth;
-    private int mCheckBoxWidth;
-    private int mCheckBoxHeight;
     private boolean mArrowClicked;
 
-    private final int PADDING = 2;
-    private final int EDIT_TEXT_CORRECTION = 8;
-
     private int mEditTextHeight;
-    private int mPadding;
-    private int mEditTextCorrection;
+    private int mPaddingTop;
+    private int mPaddingBottom;
+    private int mPaddingLeft;
+    private int mPaddingRight;
 
     @Override
     public void onNewItem(String text) {
@@ -100,19 +99,12 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
     private void init() {
         LayoutInflater inflater = (LayoutInflater)getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
-        mPlus = new ImageView(getContext());
-        mDirectory = new ImageView(getContext());
-        mCheckBox = new CheckBox(getContext());
         mEditText = (ItemEditText)inflater.inflate(R.layout.item_edit_text, null);
-        mSpinner = (ItemSpinner)inflater.inflate(R.layout.item_spinner, null);
-        mArrow = new ImageView(getContext());
-
-
-        mCheckBox.setTextColor(getResources().getColor(R.color.dark_gray));
 
         mEditText.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         mEditText.setFocusable(true);
         mEditText.setBackground(null);
+        mEditText.setPadding(0, 0, 0, 0);
         mEditText.setInputType(EditorInfo.TYPE_TEXT_FLAG_IME_MULTI_LINE);
         mEditText.setSingleLine(false);
         mEditText.setTextColor(getResources().getColor(R.color.dark_gray));
@@ -122,43 +114,17 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
         setWillNotDraw(false);
         setBackgroundColor(Color.WHITE);
 
-        mMeasureSpec = new MeasureSpec();
-
-        mPadding = toPixels(PADDING);
-        mEditTextCorrection = toPixels(EDIT_TEXT_CORRECTION);
-
-        mPlus.setImageResource(R.drawable.plus_gray);
-        mDirectory.setImageResource(R.drawable.directory);
-        mArrow.setImageResource(R.drawable.arrow);
-        mArrow.setClickable(false);
+        mPaddingTop = Utils.toPixels(2);
+        mPaddingBottom = Utils.toPixels(2);
+        mPaddingLeft = Utils.toPixels(8);
+        mPaddingRight = Utils.toPixels(2);
 
         addView(mEditText);
-        addView(mPlus);
-        addView(mSpinner);
-        addView(mArrow);
-        addView(mDirectory);
-        addView(mCheckBox);
 
-        mCheckBox.setGravity(Gravity.CENTER);
-
-        int widthSpec = mMeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-        int heightSpec = mMeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-
-        mCheckBox.measure(widthSpec, heightSpec);
-        mCheckBoxWidth = mCheckBox.getMeasuredWidth();
-        mCheckBoxHeight = mCheckBox.getMeasuredHeight();
-
-        mCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mItem.checked = isChecked;
-            }
-        });
-
-        ((ItemEditText)mEditText).setListener(this);
+        mEditText.setListener(this);
         mEditText.setOnFocusChangeListener(this);
 
-        mSpinner.setListener(new ItemSpinner.Listener() {
+        /*mSpinner.setListener(new ItemSpinner.Listener() {
             @Override
             public void onSelectionChanged(boolean isFolder) {
                 if (isFolder) {
@@ -169,7 +135,7 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
                 updateHint();
 
             }
-        });
+        });*/
     }
 
     private void updateHint() {
@@ -192,37 +158,57 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
     public void setFlags(int flags) {
         mSpinner.setVisibility(GONE);
 
-        if (mItem.isADirectory && ((flags & ItemView.FLAG_LAST) == 0)) {
-            // directory
-            mArrow.setVisibility(VISIBLE);
-            mPlus.setVisibility(GONE);
-            mCheckBox.setVisibility(INVISIBLE);
-            mDirectory.setVisibility(VISIBLE);
-        } else if ((flags & ItemView.FLAG_LAST) != 0){
-            // plus item
-            mArrow.setVisibility(GONE);
-            mPlus.setVisibility(VISIBLE);
-            mCheckBox.setVisibility(GONE);
-            mDirectory.setVisibility(GONE);
-
-        } else {
-            // normal item
-            mArrow.setVisibility(GONE);
-            mPlus.setVisibility(GONE);
-            mCheckBox.setVisibility(VISIBLE);
-            mDirectory.setVisibility(GONE);
+        if (mLeftView != null) {
+            removeView(mLeftView);
+            mLeftView = null;
+        }
+        if (mRightView != null) {
+            removeView(mRightView);
+            mRightView = null;
         }
 
-        if (mItem.isADirectory) {
-            mSpinner.setFolder(true);
+        if (mItem.isADirectory && ((flags & ItemView.FLAG_LAST) == 0)) {
+            // directory
+            mArrowImageView = new ImageView(getContext());
+            mDirectoryImageView = new ImageView(getContext());
+
+            mArrowImageView.setImageDrawable(new BitmapDrawable(getResources(), Utils.getBitmap(getContext(), R.drawable.arrow)));
+            mDirectoryImageView.setImageDrawable(new BitmapDrawable(getResources(), Utils.getBitmap(getContext(), R.drawable.directory)));
+
+            mLeftView = mDirectoryImageView;
+            mRightView = mArrowImageView;
+
+            mRightWidthMeasureSpec = MeasureSpec.makeMeasureSpec(Utils.getCheckBoxHeight(), MeasureSpec.EXACTLY);
+            mRightHeightMeasureSpec = MeasureSpec.makeMeasureSpec(Utils.getCheckBoxHeight(), MeasureSpec.EXACTLY);
+        } else if ((flags & ItemView.FLAG_LAST) != 0){
+            // plus item
+            mPlusImageView = new ImageView(getContext());
+            mPlusImageView.setImageDrawable(new BitmapDrawable(getResources(), Utils.getBitmap(getContext(), R.drawable.plus_gray)));
+
+            mLeftView = mPlusImageView;
+
+            mSpinner = new Spinner(getContext());
+            //mSpinner.setOnItemSelectedListener(this);
+            mRightView = mSpinner;
+            mRightWidthMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+            mRightHeightMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+
+            onFocusChange(mEditText, mEditText.isFocused());
         } else {
-            mSpinner.setFolder(false);
+            mCheckBox = new CheckBox(getContext());
+            mLeftView = mCheckBox;
+            mCheckBox.setChecked(mItem.checked);
         }
 
         mFlags = flags;
 
+        if (mLeftView != null){
+            addView(mLeftView);
+        }
+        if (mRightView != null) {
+            addView(mRightView);
+        }
         updateHint();
-        onFocusChange(mEditText, mEditText.isFocused());
     }
 
     public void setItem(Item item) {
@@ -256,44 +242,41 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
         mListener = listener;
     }
 
-    private int toPixels(int dp) {
-        return (int)applyDimension(COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
-    }
-
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int childWidthMeasureSpec = mMeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-        int childHeightMeasureSpec = mMeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-
         int width = 200;
-        if (mMeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.AT_MOST
-                || mMeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY) {
-            width = mMeasureSpec.getSize(widthMeasureSpec);
+        if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.AT_MOST
+                || MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.EXACTLY) {
+            width = MeasureSpec.getSize(widthMeasureSpec);
         }
 
-        mSpinner.measure(childWidthMeasureSpec, childHeightMeasureSpec);
-        mSpinnerWidth = mSpinner.getMeasuredWidth();
 
-        mRemainingWidth = width;
+        mRemainingWidth = width - mPaddingLeft - mPaddingRight;
 
-        mRemainingWidth -= mCheckBoxWidth;
-        mRemainingWidth -= (mSpinner.getVisibility() == GONE) ? mCheckBoxWidth:mSpinnerWidth;
+        int checkBoxHeight = Utils.getCheckBoxHeight();
 
-        childWidthMeasureSpec = mMeasureSpec.makeMeasureSpec(mRemainingWidth, MeasureSpec.AT_MOST);
+        mRemainingWidth -= checkBoxHeight;
+        if (mRightView != null) {
+            mRightView.measure(mRightWidthMeasureSpec, mRightHeightMeasureSpec);
+            mRemainingWidth -= mRightView.getMeasuredWidth();
+        }
 
-        mEditText.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+        int wms = MeasureSpec.makeMeasureSpec(mRemainingWidth, MeasureSpec.AT_MOST);
+        int hms = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
 
-        mEditTextHeight = mEditText.getMeasuredHeight() + mEditTextCorrection;
+        mEditText.measure(wms, hms);
 
-        mHeight = mCheckBoxHeight;
+        mEditTextHeight = mEditText.getMeasuredHeight();
+
+        mHeight = checkBoxHeight;
         if (mEditTextHeight > mHeight) {
             mHeight = mEditTextHeight;
         }
-        /*if (mSpinner.getMeasuredHeight() > mHeight) {
-            mHeight = mSpinner.getMeasuredHeight();
-        }*/
+        if (mRightView != null && mRightView.getMeasuredHeight() > mHeight) {
+            mHeight = mRightView.getMeasuredHeight();
+        }
 
-        mHeight += 2 * mPadding;
+        mHeight += mPaddingTop + mPaddingBottom;
         setMeasuredDimension(width, mHeight);
     }
 
@@ -301,17 +284,23 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         int x = 0;
-        int w = r -l;
+        int w = r - l;
+        int h = b - t;
 
-        mPlus.layout(x, 0, mCheckBoxWidth, mHeight);
-        mDirectory.layout(x, 0, mCheckBoxWidth, mHeight);
+        if (mLeftView != null) {
+            //mLeftView.layout(mPaddingLeft);
+        }
+
+        /*mPlusImageView.layout(x, 0, mCheckBoxWidth, mHeight);
+        mDirectoryImageView.layout(x, 0, mCheckBoxWidth, mHeight);
         mCheckBox.layout(x, 0, mCheckBoxWidth, mHeight);
 
         x += mCheckBoxWidth;
-        mEditText.layout(x, mPadding + mEditTextCorrection, x + mRemainingWidth, mHeight - mPadding);
+        int y = (mHeight - mEditTextHeight) / 2;
+        mEditText.layout(x, y, x + mRemainingWidth, y + mEditTextHeight);
 
-        mSpinner.layout(r - mSpinnerWidth, mPadding, r - mPadding, mHeight - 2*mPadding);
-        mArrow.layout(r - mCheckBoxWidth, 0, r, mHeight);
+        mSpinner.layout(r - mSpinnerWidth, mPaddingTop, r - mPaddingTop, mHeight - 2* mPaddingTop);
+        mArrowImageView.layout(r - mCheckBoxWidth, 0, r, mHeight);*/
     }
 
     protected void onDraw(Canvas canvas) {
@@ -323,25 +312,25 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
             /*p.setARGB(255, 255, 0, 0);
             canvas.drawRect(0, 0, mCheckBoxWidth, mHeight, p);
             p.setARGB(255, 0, 255, 0);
-            canvas.drawRect(0, mPadding, canvas.getWidth(), mEditTextHeight, p);
+            canvas.drawRect(0, mPaddingTop, canvas.getWidth(), mEditTextHeight, p);*/
             p.setARGB(255, 0, 0, 255);
             View view = mEditText;
-            canvas.drawRect(view.getLeft(), view.getTop(), view.getRight(), view.getBottom(), p);*/
+            canvas.drawRect(view.getLeft(), view.getTop(), view.getRight(), view.getBottom(), p);
         }
     }
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         Utils.log("onInterceptTouchEvent" + ev.getActionMasked());
-        if (mArrow.getVisibility() == VISIBLE) {
+        if (mArrowImageView.getVisibility() == VISIBLE) {
             if (ev.getActionMasked() == ev.ACTION_DOWN) {
-                if (ev.getX() > mCheckBoxWidth + mEditText.getMeasuredWidth()) {
+                /*if (ev.getX() > mCheckBoxWidth + mEditText.getMeasuredWidth()) {
                     mArrowClicked = true;
                     setBackgroundColor(Color.argb(255, 220, 220, 220));
                     return true;
                 } else {
                     mArrowClicked = false;
-                }
+                }*/
             }
         }
 
@@ -352,9 +341,9 @@ public class ItemFrontView extends ViewGroup implements View.OnFocusChangeListen
     public boolean onTouchEvent(MotionEvent ev) {
         if (ev.getActionMasked() == ev.ACTION_UP) {
             if (mArrowClicked) {
-                if (ev.getX() > mCheckBoxWidth + mEditText.getMeasuredWidth()) {
+                /*if (ev.getX() > mCheckBoxWidth + mEditText.getMeasuredWidth()) {
                     mListener.onArrowClicked();
-                }
+                }*/
 
                 setBackgroundColor(Color.WHITE);
                 mArrowClicked = false;

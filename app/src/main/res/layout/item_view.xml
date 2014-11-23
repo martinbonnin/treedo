@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.mbonnin.treedo.ItemView2
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/dark_gray"
+    android:orientation="vertical"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <RelativeLayout
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:paddingLeft="6dp"
+            android:paddingRight="4dp"
+            android:background="@drawable/item_background"
+            android:id="@+id/container">
+            <FrameLayout android:id="@+id/left"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_alignParentLeft="true"/>
+            <com.mbonnin.treedo.ItemEditText
+                android:id="@+id/edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="true"
+                android:background="@null"
+                android:imeOptions="flagNoExtractUi"
+                android:inputType="textImeMultiLine|textCapSentences|textMultiLine"
+                android:singleLine="false"
+                android:gravity="center_vertical"
+                android:textColor="@color/dark_gray"
+                android:textColorHint="@color/medium_gray"
+                android:layout_centerInParent="true"
+                android:paddingLeft="6dp"
+                android:layout_toRightOf="@+id/left"
+                android:layout_toLeftOf="@+id/right"
+                />
+            <FrameLayout
+                android:id="@+id/right"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_alignParentRight="true"
+                />
+        </RelativeLayout>
+        <View android:layout_height="1dp"
+            android:layout_width="match_parent"
+            android:background="@color/light_gray"/>
+    </LinearLayout>
+</com.mbonnin.treedo.ItemView2>

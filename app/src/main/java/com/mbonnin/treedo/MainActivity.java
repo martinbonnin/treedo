@@ -200,7 +200,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
         mIsDebuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 
-        Utils.init(this, mIsDebuggable);
+        Utils.init(getApplicationContext(), mIsDebuggable);
 
 
         mOAuthToken = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_TOKEN, "");

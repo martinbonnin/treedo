@@ -40,7 +40,7 @@ public class ItemSpinner extends RelativeLayout implements  AdapterView.OnItemSe
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        mSpinner = (Spinner)findViewById(R.id.spinner);
+        //mSpinner = (Spinner)findViewById(R.id.spinner);
         SpinnerAdapter spinnerAdapter = TypeSpinnerAdapter.getTypeSpinnerAdapter(getContext());
         mSpinner.setAdapter(spinnerAdapter);
         mTextView = (TextView)findViewById(R.id.text);

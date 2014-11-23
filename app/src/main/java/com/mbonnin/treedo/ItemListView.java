@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 import android.view.ViewPropertyAnimator;
@@ -29,8 +30,8 @@ public class ItemListView extends LinearLayout {
     private long mPointerID = NO_POINTER_ID;
     private Listener mListener;
 
-    private static LinkedList<ItemView> sRecycledViews = new LinkedList<ItemView>();
-    private ArrayList<ItemView> mItemViewList = new ArrayList<ItemView>();
+    private static LinkedList<ItemView2> sRecycledViews = new LinkedList<ItemView2>();
+    private ArrayList<ItemView2> mItemViewList = new ArrayList<ItemView2>();
 
     public String getTitle() {
         return mParent.text;
@@ -55,7 +56,6 @@ public class ItemListView extends LinearLayout {
     }
 
     private void collapseSpacerView(final SpacerView spacerView) {
-        final AnimatorSet animatorSet = new AnimatorSet();
         int from = spacerView.getFixedHeight();
         final ValueAnimator collapseAnimator = ValueAnimator.ofInt(from, 0);
         collapseAnimator.setDuration(200);
@@ -77,8 +77,10 @@ public class ItemListView extends LinearLayout {
         collapseAnimator.start();
     }
 
-    private void addItemViewAfter(ItemView itemView, ItemView after) {
+    private void addItemViewAfter(ItemView2 itemView, ItemView2 after) {
         int index2;
+        final LayoutParams layoutParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+
         if (after == null) {
             index2 = -1;
             mItemViewList.add(itemView);
@@ -88,10 +90,10 @@ public class ItemListView extends LinearLayout {
             mItemViewList.add(index + 1, itemView);
         }
 
-        addView(itemView, index2);
+        addView(itemView, index2, layoutParams);
     }
 
-    private void removeItemView(ItemView itemView) {
+    private void removeItemView(ItemView2 itemView) {
         mItemViewList.remove(itemView);
         removeView(itemView);
     }
@@ -100,11 +102,11 @@ public class ItemListView extends LinearLayout {
         return mItemViewList.size();
     }
 
-    private ItemView getItemViewAt(int index) {
+    private ItemView2 getItemViewAt(int index) {
         return mItemViewList.get(index);
     }
 
-    private int getItemViewIndex(ItemView itemView) {
+    private int getItemViewIndex(ItemView2 itemView) {
         for (int i =0; i < mItemViewList.size(); i++) {
             if (mItemViewList.get(i) == itemView) {
                 return i;
@@ -114,13 +116,13 @@ public class ItemListView extends LinearLayout {
         return -1;
     }
 
-    private void onNewItem(ItemView itemView, String remainingText) {
+    private void onNewItem(ItemView2 itemView, String remainingText) {
         int index = getItemViewIndex(itemView);
 
         itemView.setFlags(0);
 
         Item item2 = createItem();
-        ItemView itemView2 = getItemView();
+        ItemView2 itemView2 = getItemView();
         item2.isADirectory = itemView.getItem().isADirectory;
         itemView2.setItem(item2);
         if (index == getItemViewCount() -1) {
@@ -130,17 +132,18 @@ public class ItemListView extends LinearLayout {
         itemView2.appendAndFocus(remainingText, true);
     }
 
-    private ItemView getItemView() {
-        final ItemView itemView;
+    private ItemView2 getItemView() {
+        final ItemView2 itemView;
 
         if (sRecycledViews.size() > 0) {
             itemView = sRecycledViews.pop();
         } else {
-            itemView = new ItemView(getContext());
+            LayoutInflater inflater = LayoutInflater.from(getContext());
+            itemView = (ItemView2)inflater.inflate(R.layout.item_view, null);
         }
         final LayoutParams layoutParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 
-        itemView.setListener(new ItemView.Listener() {
+        itemView.setListener(new ItemView2.Listener() {
             @Override
             public void onNewItem(String remainingText) {
                 ItemListView.this.onNewItem(itemView, remainingText);
@@ -161,7 +164,7 @@ public class ItemListView extends LinearLayout {
                 }
 
                 if (index > 0) {
-                    ItemView previousView = getItemViewAt(index - 1);
+                    ItemView2 previousView = getItemViewAt(index - 1);
 
                     Item item = itemView.getItem();
                     mParent.children.remove(item);
@@ -208,7 +211,7 @@ public class ItemListView extends LinearLayout {
                         collapseSpacerView(spacerView);
 
                         if (getItemViewCount() == 1 && mParent.id != 0) {
-                            ItemView firstItemView = getItemViewAt(0);
+                            ItemView2 firstItemView = getItemViewAt(0);
                             int flags = firstItemView.getFlags();
                             flags |= ItemView.FLAG_SHOW_SPINNER;
                             firstItemView.setFlags(flags);
@@ -219,6 +222,11 @@ public class ItemListView extends LinearLayout {
 
                 Toast toast = Toast.makeText(getContext(), R.string.note_deleted, Toast.LENGTH_SHORT);
                 toast.show();
+
+            }
+
+            @Override
+            public void onCancelTrash() {
 
             }
         });
@@ -247,17 +255,15 @@ public class ItemListView extends LinearLayout {
 
         mParent = parent;
 
-        final LayoutParams layoutParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-
         for (int i = 0; i < mParent.children.size(); i++) {
-            final ItemView itemView = getItemView();
+            final ItemView2 itemView = getItemView();
             itemView.setItem(mParent.children.get(i));
             addItemViewAfter(itemView, null);
         }
 
         // Add the new item view
         mNewItem = createItem();
-        ItemView newItemView = getItemView();
+        ItemView2 newItemView = getItemView();
         int flags = ItemView.FLAG_LAST;
         if (mParent.id == 0) {
             mNewItem.isADirectory = true;
@@ -279,7 +285,8 @@ public class ItemListView extends LinearLayout {
     public void recycle() {
         int count = getItemViewCount();
         for (int i = 0; i < count - 1; i++) {
-            ItemView itemView = getItemViewAt(i);
+            ItemView2 itemView = getItemViewAt(i);
+            itemView.recycle();
             sRecycledViews.push(itemView);
         }
         removeAllViews();
@@ -291,11 +298,9 @@ public class ItemListView extends LinearLayout {
         int count = getItemViewCount();
         int order = 0;
         for (int i = 0; i < count; i++) {
-            ItemView itemView = getItemViewAt(i);
+            ItemView2 itemView = getItemViewAt(i);
             Item item = itemView.getItem();
             item.order = order++;
-
-            itemView.cancelSwipe();
 
             if (i == count -1) {
                 if (!item.text.equals("")) {
