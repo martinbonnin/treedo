@@ -10,7 +10,7 @@
         android:icon="@drawable/treedo_launcher"
         android:logo="@drawable/treedo"
         android:label="@string/app_name"
-        android:theme="@style/HoloPink">
+        android:theme="@style/TreeDo">
 
         <activity
             android:name="com.mbonnin.treedo.MainActivity"
