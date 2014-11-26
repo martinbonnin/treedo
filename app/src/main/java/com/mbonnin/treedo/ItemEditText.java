@@ -38,17 +38,16 @@ public class ItemEditText extends EditText implements TextWatcher {
         if (mNewLinePosition != -1) {
             int position = mNewLinePosition;
             mNewLinePosition = -1;
-            String text = s.subSequence(position + 1, s.length()).toString();
-            s.delete(position, s.length());
+            s.delete(position, position + 1);
             if (mListener != null) {
-                mListener.onNewItem(text);
+                mListener.onNewItem(position);
             }
         }
 
     }
 
     public interface Listener {
-        void onNewItem(String text);
+        void onNewItem(int position);
         void onDeleteItem();
     }
 

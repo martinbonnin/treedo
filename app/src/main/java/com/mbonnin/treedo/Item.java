@@ -1,12 +1,12 @@
 package com.mbonnin.treedo;
 
+import android.content.Context;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -15,29 +15,26 @@ import java.util.Stack;
 /**
  * Created by martin on 14/08/14.
  */
-public class Item implements Cloneable {
-    public int order;
+public class Item {
     public String text;
     public boolean checked;
     public ArrayList<Item> children;
-    int parent;
-    int id;
     public boolean isADirectory;
+    public boolean isTrash;
+    public boolean isRoot;
 
-    public Item(int id) {
+    public Item() {
         children = new ArrayList<Item>();
         text = "";
-        this.id = id;
     }
 
     public Item shallowCopy() {
-        Item clone = new Item(id);
-        clone.order = order;
+        Item clone = new Item();
         clone.text = text;
         clone.checked = checked;
-        clone.parent = parent;
-        clone.id = id;
         clone.isADirectory = isADirectory;
+        clone.isRoot = isRoot;
+        clone.isTrash = isTrash;
 
         return clone;
     }
@@ -52,10 +49,6 @@ public class Item implements Cloneable {
         return clone;
     }
 
-    @Override
-    public String toString() {
-        return String.format("%3d. %50s - %3d", id, text, parent);
-    }
 
     public void serialize(OutputStream outputStream, int depth) throws IOException {
         String line = "";
@@ -70,19 +63,6 @@ public class Item implements Cloneable {
         line += Utils.encode(text);
         line += "\n";
         outputStream.write(line.getBytes());
-
-        Collections.sort(children, new Comparator<Item>() {
-            @Override
-            public int compare(Item lhs, Item rhs) {
-                if (lhs.isADirectory && !rhs.isADirectory) {
-                    return -1;
-                } else if (!lhs.isADirectory && rhs.isADirectory) {
-                    return 1;
-                } else {
-                    return lhs.order - rhs.order;
-                }
-            }
-        });
 
         for (Item child:children){
             child.serialize(outputStream, depth + 1);
@@ -100,21 +80,15 @@ public class Item implements Cloneable {
         BufferedReader r = new BufferedReader(new InputStreamReader(inputStream));
         String line;
         Stack<Item> itemStack = new Stack<Item>();
-        Stack<Integer> orderStack = new Stack<Integer>();
 
-        int id = 0;
-        int order = 0;
-
-        Item root = new Item(id++);
+        Item root = Item.createRoot();
         root.isADirectory = true;
-        root.parent = -1;
         itemStack.push(root);
-        orderStack.push(0);
         Item item;
         Item lastItem = root;
         int depth = 0;
         while ((line = r.readLine()) != null) {
-            item = new Item(id++);
+            item = new Item();
             if (line.startsWith("X")) {
                 item.checked = true;
             } else if (line.startsWith(" ")) {
@@ -141,24 +115,15 @@ public class Item implements Cloneable {
                 while (depth > spaceCount) {
                     depth -= 4;
                     itemStack.pop();
-                    orderStack.pop();
-                    order = orderStack.peek();
                 }
                 if (depth != spaceCount) {
                     Utils.log("bad number of spaces: " + line);
                 }
-                item.order = order;
                 addChild(itemStack, item);
             } else if (spaceCount == depth) {
-                item.order = order;
                 addChild(itemStack, item);
             } else if (spaceCount == depth + 4) {
                 itemStack.push(lastItem);
-                orderStack.push(order);
-
-                order = 0;
-
-                item.order = order;
                 addChild(itemStack, item);
             } else {
                 Utils.log("bad number of spaces: " + line);
@@ -167,7 +132,6 @@ public class Item implements Cloneable {
 
             depth = spaceCount;
             lastItem = item;
-            order++;
         }
 
         detectDirectories(root);
@@ -194,6 +158,43 @@ public class Item implements Cloneable {
         Item parent = itemStack.peek();
         parent.isADirectory = true;
         parent.children.add(item);
-        item.parent = parent.id;
+    }
+
+    public Item findOrCreateTrash(Context context) {
+        Item trash = null;
+
+        for (Item child:children) {
+            if (child.isTrash) {
+                trash = child;
+                break;
+            }
+        }
+        if (trash == null) {
+            for (Item child:children) {
+                if (child.text.equals(context.getString(R.string.trash))) {
+                    trash = child;
+                    break;
+                }
+            }
+        }
+
+        if (trash == null) {
+            trash = new Item();
+            trash.isADirectory = true;
+            trash.isTrash = true;
+            trash.text = context.getString(R.string.trash);
+            children.add(0, trash);
+        }
+
+        return trash;
+    }
+
+    public static Item createRoot() {
+        Item item = new Item();
+        item.isADirectory = true;
+        item.text = "root";
+        item.isRoot = true;
+
+        return item;
     }
 }

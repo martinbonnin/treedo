@@ -1,18 +1,19 @@
  This is a folder
- Tap the text to edit the name of the folder
- Swipe right to delete
- Tap the arrow on the right to enter the folder
-     Folder can contain subfolders...
+ Swipe to trash
+ Long tap to edit
+ Short tap to enter
+     Folders can contain subfolders...
          ...and sub-subfolders...
              ...and sub-sub-subfolders...
                  Ok, you got it ! :)
      ...or items...
          This is an item
          And another
+X        Items can be checked
+         or not
+
          Not much else to say here
      ...but not both at the same time
-     (mainly because I did not implement sorting yet... )
-     (but it might come one day...)
      Check the menu for more options
      You can send suggestions to treedo@mbonnin.net
 

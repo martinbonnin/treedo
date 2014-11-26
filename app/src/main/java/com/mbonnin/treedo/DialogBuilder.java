@@ -28,7 +28,7 @@ public class DialogBuilder {
     }
 
     public DialogBuilder(Activity activity) {
-        mBuilder = new AlertDialog.Builder(activity, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
+        mBuilder = new AlertDialog.Builder(activity);
         View view = activity.getLayoutInflater().inflate(R.layout.dialog, null);
         mViewHolder = (LinearLayout)view.findViewById(R.id.view_holder);
         mIcon = (ImageView)view.findViewById(R.id.icon);

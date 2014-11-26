@@ -23,4 +23,8 @@
     <string name="get_backup_failed">Could not get your backups. Please check your google account.</string>
     <string name="flush_database">Flush Database</string>
     <string name="action_logout">Logout</string>
+    <string name="trashed">Trashed</string>
+    <string name="trash">Trash</string>
+    <string name="reorder">Reorder</string>
+    <string name="stop_reorder">Done</string>
 </resources>

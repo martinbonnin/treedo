@@ -26,9 +26,14 @@ public class Database {
     private static final String COLUMN_NAME_IS_A_DIRECTORY = "is_a_directory";
     private static final String COLUMN_NAME_TEXT = "text";
 
+    private static final int ID_NONE = -1;
+    public static final int ID_ROOT = 0;
+    public static final int ID_TRASH = 1;
+    public static final int ID_FIRST_USABLE = 2;
+
     private static Item sRoot;
+    private static Item sTrash;
     private static SQLiteDatabase sDatabase;
-    // the biggest unique id
     private static int sID;
     private static WorkerThread sThread;
 
@@ -44,22 +49,22 @@ public class Database {
                     COLUMN_NAME_IS_A_DIRECTORY + " INTEGER," +
                     COLUMN_NAME_TEXT + " TEXT)";
 
-    public static void setRoot(Item mItem) {
-        sRoot = mItem;
-
-        sID = 0;
-        findBiggestID(mItem);
-        sID++;
+    private static class DatabaseItem {
+        int id;
+        boolean checked;
+        String text;
+        int order;
+        int parent;
+        boolean isADirectory;
+        @Override
+        public String toString() {
+            return String.format("%3d. %50s - %3d", id, text, parent);
+        }
     }
 
-    private static void findBiggestID(Item mItem) {
-        if (mItem.id > sID) {
-            sID = mItem.id;
-        }
-
-        for (Item child:mItem.children) {
-            findBiggestID(child);
-        }
+    public static void setRoot(Item root, Context context) {
+        sTrash = root.findOrCreateTrash(context);
+        sRoot = root;
     }
 
     public static void sync() {
@@ -78,6 +83,10 @@ public class Database {
             }
             Utils.log("Database thread synced");
         }
+    }
+
+    public static void removeFromTrash(Item item) {
+        sTrash.children.remove(item);
     }
 
     static class ItemDatabaseOpenHelper extends SQLiteOpenHelper {
@@ -129,83 +138,100 @@ public class Database {
             Cursor cursor;
             cursor = sDatabase.query(TABLE_NAME, projection, null, null, null, null, sortOrder);
 
-            ArrayList<Item> itemArrayList = new ArrayList<Item>(cursor.getCount());
+            ArrayList<DatabaseItem> dbItemArrayList = new ArrayList<DatabaseItem>(cursor.getCount());
 
             while (cursor.moveToNext()) {
-                Item item = new Item(cursor.getInt(0));
-                item.checked = cursor.getInt(1) > 0 ? true : false;
-                item.order = cursor.getInt(2);
-                item.parent = cursor.getInt(3);
-                item.isADirectory = cursor.getInt(4) > 0 ? true : false;
-                // XXX: needed ?
-                item.text = new String(cursor.getString(5));
+                DatabaseItem dbItem = new DatabaseItem();
+                dbItem.id = cursor.getInt(0);
+                dbItem.checked = cursor.getInt(1) > 0 ? true : false;
+                dbItem.order = cursor.getInt(2);
+                dbItem.parent = cursor.getInt(3);
+                dbItem.isADirectory = cursor.getInt(4) > 0 ? true : false;
+                dbItem.text = cursor.getString(5);
+                dbItemArrayList.add(dbItem);
+
+                Utils.log(dbItem.toString());
+            }
+
+
+            ArrayList<Item> itemArrayList = new ArrayList<Item>();
+            for (int i = 0; i < dbItemArrayList.size(); i++) {
+                Item item = new Item();
+                DatabaseItem dbItem = dbItemArrayList.get(i);
+                item.isADirectory = dbItem.isADirectory;
+                item.text = dbItem.text;
+                item.checked = dbItem.checked;
+                if (dbItem.id == ID_ROOT) {
+                    sRoot = item;
+                    item.isRoot = true;
+                } else if(dbItem.id == ID_TRASH) {
+                    item.isTrash = true;
+                }
                 itemArrayList.add(item);
+            }
 
-                Utils.log(item.toString());
-                if (item.id > sID) {
-                    sID = item.id;
+            DatabaseItem currentDbParent = null;
+            Item currentParent = null;
+            for (int i = 0; i < dbItemArrayList.size(); i++) {
+                DatabaseItem dbItem = dbItemArrayList.get(i);
+                if (currentDbParent != null && dbItem.parent != currentDbParent.id) {
+                    currentDbParent = null;
+                }
+
+                if (currentDbParent == null) {
+                    for (int j = 0; j < dbItemArrayList.size(); j++) {
+                        DatabaseItem dbItem2 = dbItemArrayList.get(j);
+                        if (dbItem2.id == dbItem.parent) {
+                            currentDbParent = dbItem2;
+                            currentParent = itemArrayList.get(j);
+                            break;
+                        }
+                    }
+                    if (currentDbParent == null) {
+                        Utils.log("parent not found for item " + dbItem.id + ", parent " + dbItem.parent);
+                    }
+                }
+
+                if (currentParent != null) {
+                    currentParent.children.add(itemArrayList.get(i));
                 }
             }
-            sID++;
 
-            if (itemArrayList.size() == 0) {
-                // might happen if we really mess the database;
-                sRoot = new Item(0);
+            if (sRoot == null) {
+                Utils.log("Oopps, no root found");
+                sRoot = Item.createRoot();
             } else {
-                sRoot = itemArrayList.get(0);
-                Item currentParent = null;
-                for (int i = 1; i < itemArrayList.size(); i++) {
-                    Item item = itemArrayList.get(i);
-                    if (currentParent != null && item.parent != currentParent.id) {
-                        currentParent = null;
-                    }
-
-                    if (currentParent == null) {
-                        // XXX sort + binary search
-                        for (Item item2 : itemArrayList) {
-                            if (item2.id == item.parent) {
-                                currentParent = item2;
-                                break;
-                            }
-                        }
-                        if (currentParent == null) {
-                            Utils.log("parent not found for item " + item.id + ", parent " + item.parent);
-                        }
-                    }
-
-                    if (currentParent != null) {
-                        currentParent.children.add(item);
-                    }
+                if (!sRoot.isADirectory) {
+                    sRoot.isADirectory = true;
+                    Utils.log("Oopps, root item is not a directory");
                 }
             }
+            sTrash = sRoot.findOrCreateTrash(context);
         }
 
         return sRoot;
     }
 
-    static private void insertOrUpdateItem(SQLiteDatabase sqLiteDatabase, Item item, boolean insert) {
+    static int insertItem(SQLiteDatabase database, Item item, int parentId, int order) {
         ContentValues values = new ContentValues();
-        values.put(COLUMN_NAME_ID, item.id);
+        int id;
+        if (item.isRoot) {
+            id = ID_ROOT;
+        } else if (item.isTrash) {
+            id = ID_TRASH;
+        } else {
+            id = sID++;
+        }
+        values.put(COLUMN_NAME_ID, id);
         values.put(COLUMN_NAME_CHECKED, item.checked ? 1 : 0);
-        values.put(COLUMN_NAME_ORDER, item.order);
-        values.put(COLUMN_NAME_PARENT, item.parent);
+        values.put(COLUMN_NAME_ORDER, order);
+        values.put(COLUMN_NAME_PARENT, parentId);
         values.put(COLUMN_NAME_IS_A_DIRECTORY, item.isADirectory ? 1 : 0);
         values.put(COLUMN_NAME_TEXT, item.text);
 
-        if (insert) {
-            sqLiteDatabase.insert(TABLE_NAME, null, values);
-        } else {
-            sqLiteDatabase.update(TABLE_NAME, values, COLUMN_NAME_ID + "=" + item.id, null);
-        }
-    }
+        database.insert(TABLE_NAME, null, values);
 
-    static Item createItem() {
-        Item item = new Item(sID++);
-        return item;
-    }
-
-    static void insertItem(SQLiteDatabase database, Item item) {
-        insertOrUpdateItem(database, item, true);
+        return id;
     }
 
     static class WorkerThread extends HandlerThread {
@@ -254,18 +280,24 @@ public class Database {
         sendMessage(MESSAGE_SAVE, clone);
     }
 
-    private static void add(SQLiteDatabase database, Item item) {
-        insertItem(database, item);
-        for (Item item2:item.children) {
-            add(database, item2);
+    private static void add(SQLiteDatabase database, Item item, int parentId, int order) {
+        int id = insertItem(database, item, parentId, order);
+        for (int i = 0; i < item.children.size(); i++) {
+            Item item2 = item.children.get(i);
+            add(database, item2, id, i);
         }
     }
 
     private static void save(SQLiteDatabase database, Item item) {
         database.beginTransaction();
         database.delete(TABLE_NAME, null, null);
-        add(database, item);
+        sID = ID_FIRST_USABLE;
+        add(database, item, ID_NONE, 0);
         database.setTransactionSuccessful();
         database.endTransaction();
+    }
+
+    public static void addToTrash(Item item) {
+        sTrash.children.add(item);
     }
 }

@@ -28,6 +28,7 @@ import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.widget.AdapterView;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
@@ -55,6 +56,8 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     private static final int MENU_ID_IMPORT = 3;
     private static final int MENU_ID_FLUSH_DATABASE = 4;
     private static final int MENU_ID_LOGOUT = 5;
+    private static final int MENU_ID_START_REORDER = 6;
+    private static final int MENU_ID_STOP_REORDER = 7;
 
     private static final String PREFERENCE_ENABLE_BACKUP = "enable_backup";
     private static final String PREFERENCE_OAUTH_TOKEN = "oauth_token";
@@ -78,6 +81,8 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
     private boolean mIsDebuggable;
     private long mLastSaveTime;
+    private boolean mReordering;
+    private ImageView mFab;
 
     private void updateActionBar() {
         if (listViewStack.size() > 1) {
@@ -92,7 +97,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     private void pushListView(Item item, boolean animate) {
         long start = System.currentTimeMillis();
         if (!listViewStack.empty()) {
-            listViewStack.peek().sync();
+            listViewStack.peek().updateItemsTextAndChecked();
         }
 
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
@@ -104,14 +109,8 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         dummyLayout.setFocusableInTouchMode(true);
         relativeLayout.addView(dummyLayout, 0, 0);
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.setFillViewport(true);
-        relativeLayout.addView(scrollView, layoutParams);
-
         ItemListView listView = new ItemListView(this, item);
-        listView.setOrientation(LinearLayout.VERTICAL);
-        listView.setBackgroundColor(Color.WHITE);
-        scrollView.addView(listView, layoutParams);
+        relativeLayout.addView(listView, layoutParams);
 
         listView.setListener(new ItemListView.Listener() {
             @Override
@@ -143,6 +142,21 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         updateActionBar();
         Utils.log("pushListView2() took " + (System.currentTimeMillis() - start) + " ms");
 
+        mFab.animate().translationY(0).setDuration(300).start();
+        listViewStack.peek().mScrollView.setOnScrollChangedListener(new ObservableScrollView.OnScrollChangedListener() {
+            private int mLastScrollOffset;
+            @Override
+            public void onScrollChanged(ScrollView who, int l, int t, int oldl, int oldt) {
+                if (Math.abs(t - mLastScrollOffset) > Utils.toPixels(20)) {
+                    if (t > mLastScrollOffset) {
+                        mFab.animate().translationY(Utils.toPixels(80)).setDuration(300).start();
+                    } else {
+                        mFab.animate().translationY(0).setDuration(300).start();
+                    }
+                }
+                mLastScrollOffset = t;
+            }
+        });
         saveData(false);
     }
 
@@ -158,7 +172,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         }
 
         ItemListView oldListView = listViewStack.pop();
-        oldListView.sync();
+        oldListView.updateItemsTextAndChecked();
         oldListView.recycle();
 
         updateActionBar();
@@ -192,6 +206,8 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         });
 
         saveData(false);
+
+        mFab.animate().translationY(0).setDuration(300).start();
     }
 
     @Override
@@ -223,6 +239,22 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
         setContentView(mTopLayout);
 
+        mFab = new ImageView(this);
+        layoutParams.width = Utils.toPixels(60);
+        layoutParams.height = Utils.toPixels(60);
+        layoutParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
+        layoutParams.bottomMargin = Utils.toPixels(10);
+        layoutParams.rightMargin = Utils.toPixels(8);
+        mFab.setImageResource(R.drawable.fab);
+        mFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mFab.animate().translationY(0).setDuration(300).start();
+                listViewStack.peek().focusLastItem();
+            }
+        });
+        mTopLayout.addView(mFab, layoutParams);
+
         Item rootItem = Database.getRoot(this);
         pushListView(rootItem, false);
     }
@@ -235,23 +267,33 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         int order = 0;
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-
-        menu.add(Menu.NONE, MENU_ID_IMPORT, order++, getString(R.string.action_import));
-
-        if (preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false)) {
-            menu.add(Menu.NONE, MENU_ID_DISABLE_BACKUP, order++, getString(R.string.action_disable_backup));
+        if (mReordering) {
+            MenuItem menuItem = menu.add(Menu.NONE, MENU_ID_STOP_REORDER, order++, getString(R.string.stop_reorder));
+            menuItem.setIcon(R.drawable.check);
+            menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         } else {
-            menu.add(Menu.NONE, MENU_ID_ENABLE_BACKUP, order++, getString(R.string.action_enable_backup));
-        }
+            SharedPreferences preferences = getPreferences(MODE_PRIVATE);
 
-        if (mIsDebuggable) {
-            menu.add(Menu.NONE, MENU_ID_FLUSH_DATABASE, order++, getString(R.string.flush_database));
-        }
-        menu.add(Menu.NONE, MENU_ID_ABOUT, order++, getString(R.string.action_about));
+            MenuItem menuItem = menu.add(Menu.NONE, MENU_ID_START_REORDER, order++, getString(R.string.reorder));
+            menuItem.setIcon(R.drawable.swap);
+            menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 
-        if (!mOAuthEmail.equals("") || !mOAuthToken.equals("")) {
-            menu.add(Menu.NONE, MENU_ID_LOGOUT, order++, getString(R.string.action_logout));
+            menu.add(Menu.NONE, MENU_ID_IMPORT, order++, getString(R.string.action_import));
+
+            if (preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false)) {
+                menu.add(Menu.NONE, MENU_ID_DISABLE_BACKUP, order++, getString(R.string.action_disable_backup));
+            } else {
+                menu.add(Menu.NONE, MENU_ID_ENABLE_BACKUP, order++, getString(R.string.action_enable_backup));
+            }
+
+            if (mIsDebuggable) {
+                menu.add(Menu.NONE, MENU_ID_FLUSH_DATABASE, order++, getString(R.string.flush_database));
+            }
+            menu.add(Menu.NONE, MENU_ID_ABOUT, order++, getString(R.string.action_about));
+
+            if (!mOAuthEmail.equals("") || !mOAuthToken.equals("")) {
+                menu.add(Menu.NONE, MENU_ID_LOGOUT, order++, getString(R.string.action_logout));
+            }
         }
         return true;
     }
@@ -283,8 +325,33 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
             case MENU_ID_LOGOUT:
                 logout();
                 return true;
+            case MENU_ID_START_REORDER:
+                startReorder();
+                return true;
+            case MENU_ID_STOP_REORDER:
+                stopReorder();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void startReorder() {
+        listViewStack.peek().startReorder();
+
+        mActionBar.setTitle("");
+        mActionBar.setDisplayHomeAsUpEnabled(false);
+        mReordering = true;
+        invalidateOptionsMenu();
+    }
+
+    private void stopReorder() {
+        listViewStack.peek().stopReorder();
+
+        mActionBar.setCustomView(null);
+        updateActionBar();
+
+        mReordering = false;
+        invalidateOptionsMenu();
     }
 
     private void logout() {
@@ -300,18 +367,16 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         invalidateOptionsMenu();
     }
 
-    private void setRootItem(Item item) {
+    private void setRootItem(Item root) {
         mFrameLayout.removeAllViews();
         listViewStack.clear();
-        Database.setRoot(item);
-        Database.saveAsync(item);
-        pushListView(item, false);
+        Database.setRoot(root, this);
+        Database.saveAsync(root);
+        pushListView(root, false);
     }
 
     private void flushDatabase() {
-        Item item = new Item(0);
-        item.parent = -1;
-
+        Item item = Item.createRoot();
         setRootItem(item);
     }
 
@@ -418,12 +483,11 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         DialogBuilder builder = new DialogBuilder(this);
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
-        builder.setTitle(getString(R.string.action_about));
-        builder.setIcon(R.drawable.about);
+        builder.setTitle(getString(R.string.app_name));
+        builder.setIcon(R.drawable.treedo_blue);
 
         ScrollView scrollView = new ScrollView(this);
         TextView textView = new TextView(this);
-        textView.setTextColor(Color.WHITE);
         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         textView.setText(Html.fromHtml(getString(R.string.about)));
         textView.setMovementMethod(LinkMovementMethod.getInstance());
@@ -460,7 +524,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         }
         builder.setTitle(getString(R.string.app_name));
         TextView textView = new TextView(this);
-        textView.setTextColor(Color.WHITE);
         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP,18);
         textView.setText(message_id);
 
@@ -640,7 +703,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
         if (!listViewStack.empty()) {
             ItemListView listView = listViewStack.peek();
-            listView.sync();
+            listView.updateItemsTextAndChecked();
         }
 
         saveData(true);

@@ -7,4 +7,5 @@
     <color name="light_gray">#dcdcdc</color>
     <color name="medium_gray">#909090</color>
     <color name="vibrant_light">#FF80AB</color>
+    <color name="amber">#FFC107</color>
 </resources>

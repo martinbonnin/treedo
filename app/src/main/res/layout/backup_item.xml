@@ -13,7 +13,6 @@
         android:layout_height="wrap_content"
         android:text="bkbuivfdfvdvdfb"
         android:id="@+id/label"
-        android:textColor="@android:color/white"
         android:layout_marginLeft="20dp"/>
 
 </LinearLayout>
