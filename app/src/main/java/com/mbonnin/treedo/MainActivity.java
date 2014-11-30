@@ -151,7 +151,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
                     if (t > mLastScrollOffset) {
                         mFab.animate().translationY(Utils.toPixels(80)).setDuration(300).start();
                     } else {
-                        mFab.animate().translationY(0).setDuration(300).start();
+                        //mFab.animate().translationY(0).setDuration(300).start();
                     }
                 }
                 mLastScrollOffset = t;
