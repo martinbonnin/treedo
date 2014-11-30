@@ -51,6 +51,7 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
     public static final int FLAG_SHOW_HANDLE = 4;
     private int mLongPressTimeout;
     private Handler mHandler;
+    private static int sId = 0;
 
     private Runnable mLongPressRunnable = new Runnable() {
         @Override
@@ -164,6 +165,7 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
         mLongPressTimeout = ViewConfiguration.get(getContext()).getLongPressTimeout();
 
         mHandler = new Handler();
+        mEditText.setId(sId++);
     }
 
     private class CanDo {
