@@ -15,8 +15,8 @@ android {
         applicationId "com.mbonnin.treedo"
         minSdkVersion 14
         targetSdkVersion 21
-        versionCode 0
-        versionName "0.00"
+        versionCode 100
+        versionName "1.00"
     }
     buildTypes {
         release {
