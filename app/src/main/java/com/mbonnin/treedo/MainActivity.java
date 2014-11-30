@@ -240,11 +240,12 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         setContentView(mTopLayout);
 
         mFab = new ImageView(this);
-        layoutParams.width = Utils.toPixels(60);
-        layoutParams.height = Utils.toPixels(60);
-        layoutParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-        layoutParams.bottomMargin = Utils.toPixels(10);
-        layoutParams.rightMargin = Utils.toPixels(8);
+        FrameLayout.LayoutParams layoutParams2 = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        layoutParams2.width = Utils.toPixels(60);
+        layoutParams2.height = Utils.toPixels(60);
+        layoutParams2.gravity = Gravity.BOTTOM | Gravity.RIGHT;
+        layoutParams2.bottomMargin = Utils.toPixels(10);
+        layoutParams2.rightMargin = Utils.toPixels(8);
         mFab.setImageResource(R.drawable.fab);
         mFab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -253,7 +254,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
                 listViewStack.peek().focusLastItem();
             }
         });
-        mTopLayout.addView(mFab, layoutParams);
+        mTopLayout.addView(mFab, layoutParams2);
 
         Item rootItem = Database.getRoot(this);
         pushListView(rootItem, false);
