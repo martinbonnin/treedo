@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="muted">#3f51b5</color>
-    <color name="muted_dark">#303f9f</color>
-    <color name="vibrant">#ff4081</color>
-    <color name="dark_gray">#606060</color>
-    <color name="light_gray">#dcdcdc</color>
-    <color name="medium_gray">#909090</color>
-    <color name="vibrant_light">#FF80AB</color>
+    <color name="muted_300">#7986CB</color>
+    <color name="muted_500">#3f51b5</color>
+    <color name="muted_700">#303f9f</color>
+    <color name="vibrant_100">#FF80AB</color>
+    <color name="vibrant_200">#ff4081</color>
+    <color name="black_54">#89000000</color>
+    <color name="black_87">#dd000000</color>
+    <color name="black_26">#42000000</color>
     <color name="amber">#FFC107</color>
 </resources>

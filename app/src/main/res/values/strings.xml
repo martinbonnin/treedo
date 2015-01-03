@@ -9,7 +9,7 @@
     <string name="item">Item</string>
     <string name="directory">Folder</string>
     <string name="new_item">New item</string>
-    <string name="new_directory">New folder</string>
+    <string name="new_folder">New folder</string>
     <string name="note_deleted">Note deleted</string>
     <string name="cannot_enable_backup">Oooops, cannot enable google drive backup. Check your connectivity.</string>
     <string name="backup_enabled_successfully">Setup successful. Your notes will be backed up at regular intervals.<p>You can check the backups in your google drive account.</p></string>
@@ -27,4 +27,10 @@
     <string name="trash">Trash</string>
     <string name="reorder">Reorder</string>
     <string name="stop_reorder">Done</string>
+    <string name="listview_empty">This folder is empty.\nWhat do you want to put here ?</string>
+    <string name="subfolders">Subfolders</string>
+    <string name="or">or</string>
+    <string name="items">Items</string>
+    <string name="add">Add</string>
+
 </resources>

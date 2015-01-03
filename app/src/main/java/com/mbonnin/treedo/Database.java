@@ -158,7 +158,7 @@ public class Database {
             for (int i = 0; i < dbItemArrayList.size(); i++) {
                 Item item = new Item();
                 DatabaseItem dbItem = dbItemArrayList.get(i);
-                item.isADirectory = dbItem.isADirectory;
+                item.isAFolder = dbItem.isADirectory;
                 item.text = dbItem.text;
                 item.checked = dbItem.checked;
                 if (dbItem.id == ID_ROOT) {
@@ -201,8 +201,8 @@ public class Database {
                 Utils.log("Oopps, no root found");
                 sRoot = Item.createRoot();
             } else {
-                if (!sRoot.isADirectory) {
-                    sRoot.isADirectory = true;
+                if (!sRoot.isAFolder) {
+                    sRoot.isAFolder = true;
                     Utils.log("Oopps, root item is not a directory");
                 }
             }
@@ -226,7 +226,7 @@ public class Database {
         values.put(COLUMN_NAME_CHECKED, item.checked ? 1 : 0);
         values.put(COLUMN_NAME_ORDER, order);
         values.put(COLUMN_NAME_PARENT, parentId);
-        values.put(COLUMN_NAME_IS_A_DIRECTORY, item.isADirectory ? 1 : 0);
+        values.put(COLUMN_NAME_IS_A_DIRECTORY, item.isAFolder ? 1 : 0);
         values.put(COLUMN_NAME_TEXT, item.text);
 
         database.insert(TABLE_NAME, null, values);

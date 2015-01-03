@@ -23,7 +23,7 @@
             android:id="@+id/title"
             android:textSize="18sp"
             android:layout_weight="0"
-            android:textColor="@color/vibrant"
+            android:textColor="@color/vibrant_200"
             android:gravity="center_vertical"
             />
         <Space android:layout_width="wrap_content"
@@ -34,7 +34,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1.6dp"
-        android:background="@color/vibrant" />
+        android:background="@color/vibrant_200" />
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"

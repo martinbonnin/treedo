@@ -1,8 +1,8 @@
 <resources>
     <style name="TreeDo"
         parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="colorPrimary">@color/muted</item>
-        <item name="colorPrimaryDark">@color/muted_dark</item>
-        <item name="colorAccent">@color/vibrant</item>
+        <item name="colorPrimary">@color/muted_500</item>
+        <item name="colorPrimaryDark">@color/muted_700</item>
+        <item name="colorAccent">@color/vibrant_200</item>
     </style>
 </resources>

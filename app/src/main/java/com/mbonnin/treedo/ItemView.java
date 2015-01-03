@@ -96,8 +96,8 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
             return;
         }
 
-        if (mItem.isADirectory) {
-            mEditText.setHint(R.string.new_directory);
+        if (mItem.isAFolder) {
+            mEditText.setHint(R.string.new_folder);
         } else {
             mEditText.setHint(R.string.new_item);
         }
@@ -106,9 +106,9 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
         if (position == 1) {
-            mItem.isADirectory = true;
+            mItem.isAFolder = true;
         } else {
-            mItem.isADirectory = false;
+            mItem.isAFolder = false;
         }
         updateHint();
     }
@@ -180,7 +180,7 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
         c.canSwipe = true;
         c.canGrab = true;
 
-        if (!mItem.isADirectory) {
+        if (!mItem.isAFolder) {
             c.canClick = false;
             c.canSwipe = false;
         }
@@ -234,7 +234,7 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
         mCheckBox = null;
         mSpinner = null;
 
-        if (mItem.isADirectory && ((flags & FLAG_LAST) == 0)) {
+        if (mItem.isAFolder && ((flags & FLAG_LAST) == 0)) {
             // directory
             ImageView rightImageView = new ImageView(getContext());
             mDirectoryImageView = new ImageView(getContext());
@@ -247,7 +247,7 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
             if (mItem.isTrash) {
                 mDirectoryImageView.setImageDrawable(new BitmapDrawable(getResources(), Utils.getBitmap(getContext(), R.drawable.trash)));
             } else {
-                mDirectoryImageView.setImageDrawable(new BitmapDrawable(getResources(), Utils.getBitmap(getContext(), R.drawable.directory)));
+                mDirectoryImageView.setImageDrawable(new BitmapDrawable(getResources(), Utils.getBitmap(getContext(), R.drawable.folder)));
             }
 
             LayoutParams layoutParams = new LayoutParams(Utils.getCheckBoxHeight(), Utils.getCheckBoxHeight());
@@ -280,7 +280,7 @@ public class ItemView extends FrameLayout implements ItemEditText.Listener, Adap
             LayoutParams layoutParams = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             mSpinner = new Spinner(getContext());
             mSpinner.setAdapter(new TypeSpinnerAdapter(getContext()));
-            if (mItem.isADirectory) {
+            if (mItem.isAFolder) {
                 mSpinner.setSelection(SPINNER_POSITION_DIRECTORY);
             } else {
                 mSpinner.setSelection(SPINNER_POSITION_ITEM);

@@ -96,9 +96,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
     private void pushListView(Item item, boolean animate) {
         long start = System.currentTimeMillis();
-        if (!listViewStack.empty()) {
-            listViewStack.peek().updateItemsTextAndChecked();
-        }
 
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         RelativeLayout relativeLayout = new RelativeLayout(this);
@@ -109,7 +106,8 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         dummyLayout.setFocusableInTouchMode(true);
         relativeLayout.addView(dummyLayout, 0, 0);
 
-        ItemListView listView = new ItemListView(this, item);
+        ItemListView listView = new ItemListView(this);
+        listView.setItem(item);
         relativeLayout.addView(listView, layoutParams);
 
         listView.setListener(new ItemListView.Listener() {
@@ -142,21 +140,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         updateActionBar();
         Utils.log("pushListView2() took " + (System.currentTimeMillis() - start) + " ms");
 
-        mFab.animate().translationY(0).setDuration(300).start();
-        listViewStack.peek().mScrollView.setOnScrollChangedListener(new ObservableScrollView.OnScrollChangedListener() {
-            private int mLastScrollOffset;
-            @Override
-            public void onScrollChanged(ScrollView who, int l, int t, int oldl, int oldt) {
-                if (Math.abs(t - mLastScrollOffset) > Utils.toPixels(20)) {
-                    if (t > mLastScrollOffset) {
-                        mFab.animate().translationY(Utils.toPixels(80)).setDuration(300).start();
-                    } else {
-                        //mFab.animate().translationY(0).setDuration(300).start();
-                    }
-                }
-                mLastScrollOffset = t;
-            }
-        });
         saveData(false);
     }
 
@@ -171,9 +154,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
             return;
         }
 
-        ItemListView oldListView = listViewStack.pop();
-        oldListView.updateItemsTextAndChecked();
-        oldListView.recycle();
+        listViewStack.pop();
 
         updateActionBar();
 
@@ -238,23 +219,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         mTopLayout.addView(mProgressBar, layoutParams);
 
         setContentView(mTopLayout);
-
-        mFab = new ImageView(this);
-        FrameLayout.LayoutParams layoutParams2 = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layoutParams2.width = Utils.toPixels(60);
-        layoutParams2.height = Utils.toPixels(60);
-        layoutParams2.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-        layoutParams2.bottomMargin = Utils.toPixels(10);
-        layoutParams2.rightMargin = Utils.toPixels(8);
-        mFab.setImageResource(R.drawable.fab);
-        mFab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mFab.animate().translationY(0).setDuration(300).start();
-                listViewStack.peek().focusLastItem();
-            }
-        });
-        mTopLayout.addView(mFab, layoutParams2);
 
         Item rootItem = Database.getRoot(this);
         pushListView(rootItem, false);
@@ -337,7 +301,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     }
 
     private void startReorder() {
-        listViewStack.peek().startReorder();
+        listViewStack.peek().setEditMode(true);
 
         mActionBar.setTitle("");
         mActionBar.setDisplayHomeAsUpEnabled(false);
@@ -346,7 +310,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     }
 
     private void stopReorder() {
-        listViewStack.peek().stopReorder();
+        listViewStack.peek().setEditMode(false);
 
         mActionBar.setCustomView(null);
         updateActionBar();
@@ -701,11 +665,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-
-        if (!listViewStack.empty()) {
-            ItemListView listView = listViewStack.peek();
-            listView.updateItemsTextAndChecked();
-        }
 
         saveData(true);
     }

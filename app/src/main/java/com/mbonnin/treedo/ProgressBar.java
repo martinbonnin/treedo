@@ -1,14 +1,11 @@
 package com.mbonnin.treedo;
 
-import android.animation.TimeInterpolator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.view.View;
-import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
-import android.widget.FrameLayout;
 
 /**
  * Created by martin on 15/11/14.
@@ -21,10 +18,10 @@ public class ProgressBar extends View implements ValueAnimator.AnimatorUpdateLis
     public ProgressBar(Context context) {
         super(context);
 
-        setBackgroundColor(getResources().getColor(R.color.vibrant_light));
+        setBackgroundColor(getResources().getColor(R.color.vibrant_100));
         mPainter = new Paint();
         mPainter.setStyle(Paint.Style.FILL);
-        mPainter.setColor(getResources().getColor(R.color.vibrant));
+        mPainter.setColor(getResources().getColor(R.color.vibrant_200));
     }
 
     @Override

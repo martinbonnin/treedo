@@ -8,18 +8,18 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Stack;
 
 /**
  * Created by martin on 14/08/14.
  */
 public class Item {
+    public static final int TYPE_FOLDER = 0;
+    public static final int TYPE_ITEM = 1;
     public String text;
     public boolean checked;
     public ArrayList<Item> children;
-    public boolean isADirectory;
+    public boolean isAFolder;
     public boolean isTrash;
     public boolean isRoot;
 
@@ -32,7 +32,7 @@ public class Item {
         Item clone = new Item();
         clone.text = text;
         clone.checked = checked;
-        clone.isADirectory = isADirectory;
+        clone.isAFolder = isAFolder;
         clone.isRoot = isRoot;
         clone.isTrash = isTrash;
 
@@ -82,7 +82,7 @@ public class Item {
         Stack<Item> itemStack = new Stack<Item>();
 
         Item root = Item.createRoot();
-        root.isADirectory = true;
+        root.isAFolder = true;
         itemStack.push(root);
         Item item;
         Item lastItem = root;
@@ -142,21 +142,21 @@ public class Item {
         boolean containsADirectory = false;
         for (Item child:item.children) {
             detectDirectories(child);
-            if (child.isADirectory) {
+            if (child.isAFolder) {
                 containsADirectory = true;
             }
         }
 
         if (containsADirectory) {
             for (Item child:item.children) {
-                child.isADirectory = true;
+                child.isAFolder = true;
             }
         }
     }
 
     private static void addChild(Stack<Item> itemStack, Item item) {
         Item parent = itemStack.peek();
-        parent.isADirectory = true;
+        parent.isAFolder = true;
         parent.children.add(item);
     }
 
@@ -180,7 +180,7 @@ public class Item {
 
         if (trash == null) {
             trash = new Item();
-            trash.isADirectory = true;
+            trash.isAFolder = true;
             trash.isTrash = true;
             trash.text = context.getString(R.string.trash);
             children.add(0, trash);
@@ -191,7 +191,7 @@ public class Item {
 
     public static Item createRoot() {
         Item item = new Item();
-        item.isADirectory = true;
+        item.isAFolder = true;
         item.text = "root";
         item.isRoot = true;
 
