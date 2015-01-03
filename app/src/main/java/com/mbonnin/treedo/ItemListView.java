@@ -80,6 +80,7 @@ public class ItemListView extends LinearLayout {
         mRecyclerView.setAdapter(mAdapter);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getContext());
         mRecyclerView.setLayoutManager(layoutManager);
+        mRecyclerView.addItemDecoration(new ItemDecorator());
         addView(mRecyclerView);
 
         layoutParams = new FrameLayout.LayoutParams(0,0);

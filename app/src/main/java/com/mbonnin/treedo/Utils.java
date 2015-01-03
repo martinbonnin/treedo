@@ -48,8 +48,8 @@ public class Utils {
         mContext = context;
     }
 
-    public static int toPixels(int dp) {
-        return (int)applyDimension(COMPLEX_UNIT_DIP, dp, sDisplayMetrics);
+    public static float toPixels(float dp) {
+        return applyDimension(COMPLEX_UNIT_DIP, dp, sDisplayMetrics);
     }
 
     public static String encode(String string) {

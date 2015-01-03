@@ -26,7 +26,7 @@ public class ProgressBar extends View implements ValueAnimator.AnimatorUpdateLis
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int d = Utils.toPixels(4);
+        int d = (int)Utils.toPixels(4);
         int width = d;
         MeasureSpec measureSpec = new MeasureSpec();
 
