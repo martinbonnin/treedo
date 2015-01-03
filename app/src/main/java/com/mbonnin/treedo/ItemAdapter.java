@@ -12,10 +12,15 @@ import android.view.ViewGroup;
 public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     private final Context mContext;
     private Item mItem;
+    OnFolderClickedListener mOnFolderClickedListener;
 
     public ItemAdapter(Context context, Item item) {
         mItem = item;
         mContext = context;
+    }
+
+    public void setOnFolderClickedListener(OnFolderClickedListener onFolderClickedListener) {
+        mOnFolderClickedListener = onFolderClickedListener;
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -32,10 +37,17 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     }
 
     @Override
-    public void onBindViewHolder(ItemAdapter.ViewHolder holder, int position) {
+    public void onBindViewHolder(final ItemAdapter.ViewHolder holder, int position) {
         Item item = mItem.children.get(position);
         holder.mItemView.cancelTranslation();
         holder.mItemView.setItem(item);
+        holder.mItemView.setListener(new ItemView2.Listener() {
+
+            @Override
+            public void onArrowClicked() {
+                mOnFolderClickedListener.onFolderClicked(holder.mItemView.getItem());
+            }
+        });
 
     }
 
@@ -47,5 +59,9 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     public void add(Item item) {
         mItem.children.add(item);
         notifyDataSetChanged();
+    }
+
+    public abstract static class OnFolderClickedListener {
+        public abstract void onFolderClicked(Item item);
     }
 }

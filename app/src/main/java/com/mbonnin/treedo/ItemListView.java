@@ -1,6 +1,7 @@
 package com.mbonnin.treedo;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
@@ -29,6 +30,7 @@ public class ItemListView extends LinearLayout {
 
     private void init() {
         setOrientation(VERTICAL);
+        setBackgroundColor(Color.WHITE);
     }
 
     public ItemListView(Context context) {
@@ -49,6 +51,7 @@ public class ItemListView extends LinearLayout {
     private void createListView(int type) {
         if (mEmptyView != null) {
             removeView(mEmptyView);
+            mEmptyView = null;
         }
 
         mType = type;
@@ -71,22 +74,37 @@ public class ItemListView extends LinearLayout {
             }
         });
 
-        FrameLayout.LayoutParams layoutParams;
+        LinearLayout.LayoutParams layoutParams;
 
-        layoutParams = new FrameLayout.LayoutParams(0,0);
+        layoutParams = new LinearLayout.LayoutParams(0,0);
         layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        layoutParams.weight = 1;
+
+        mAdapter.setOnFolderClickedListener(new ItemAdapter.OnFolderClickedListener() {
+            @Override
+            public void onFolderClicked(Item item) {
+                mListener.onFolderClicked(item);
+            }
+        });
+
         mRecyclerView = new RecyclerView(getContext());
         mRecyclerView.setAdapter(mAdapter);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getContext());
         mRecyclerView.setLayoutManager(layoutManager);
         mRecyclerView.addItemDecoration(new ItemDecorator());
-        addView(mRecyclerView);
+        mAdapter.setOnFolderClickedListener(new ItemAdapter.OnFolderClickedListener() {
+            @Override
+            public void onFolderClicked(Item item) {
+                mListener.onFolderClicked(item);
+            }
+        });
+        addView(mRecyclerView, layoutParams);
 
-        layoutParams = new FrameLayout.LayoutParams(0,0);
-        layoutParams.topMargin = getHeight();
+        layoutParams = new LinearLayout.LayoutParams(0,0);
         layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
         layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        layoutParams.weight = 0;
         addView(footer, layoutParams);
 
     }
@@ -96,7 +114,7 @@ public class ItemListView extends LinearLayout {
         mAdapter = new ItemAdapter(getContext(), item);
 
         if (item.children.size() == 0) {
-            mEmptyView = LayoutInflater.from(getContext()).inflate(R.layout.listview_empty, this);
+            mEmptyView = LayoutInflater.from(getContext()).inflate(R.layout.listview_empty, null);
             Button subFoldersButton = (Button) mEmptyView.findViewById(R.id.subfolders_button);
             Button itemButton = (Button) mEmptyView.findViewById(R.id.items_button);
 
@@ -113,6 +131,8 @@ public class ItemListView extends LinearLayout {
                     createListView(Item.TYPE_ITEM);
                 }
             });
+
+            addView(mEmptyView);
         } else {
             int type = item.children.get(0).isAFolder ? Item.TYPE_FOLDER : Item.TYPE_ITEM;
             createListView(type);
@@ -132,6 +152,6 @@ public class ItemListView extends LinearLayout {
     }
 
     public static abstract class Listener {
-        public abstract void onDirectoryClicked(Item item);
+        public abstract void onFolderClicked(Item item);
     }
 }

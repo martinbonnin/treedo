@@ -20,6 +20,7 @@ public class ItemView2 extends FrameLayout {
     public ImageView mFolder;
     public ItemEditText mEditText;
     public ImageView mArrow;
+    private Listener mListener;
 
     public ItemView2(Context context) {
         super(context);
@@ -58,12 +59,37 @@ public class ItemView2 extends FrameLayout {
                 mFolder.setImageResource(R.drawable.folder);
             }
             mArrow.setVisibility(VISIBLE);
+            mEditText.setFocusable(false);
+
+            setClickable(true);
+            setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    mListener.onArrowClicked();
+                }
+            });
         } else {
             mCheckBox.setVisibility(VISIBLE);
             mCheckBox.setChecked(item.checked);
             mFolder.setVisibility(GONE);
             mArrow.setVisibility(GONE);
+            mEditText.setFocusable(true);
+
+            setClickable(false);
+            setOnClickListener(null);
         }
         mEditText.setText(item.text);
+    }
+
+    public void setListener(Listener listener) {
+        mListener = listener;
+    }
+
+    public Item getItem() {
+        return mItem;
+    }
+
+    public abstract static class Listener {
+        public abstract void onArrowClicked();
     }
 }

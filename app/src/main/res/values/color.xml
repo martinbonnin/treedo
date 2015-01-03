@@ -5,8 +5,9 @@
     <color name="muted_700">#303f9f</color>
     <color name="vibrant_100">#FF80AB</color>
     <color name="vibrant_200">#ff4081</color>
+    <color name="black_12">#0c000000</color>
+    <color name="black_26">#42000000</color>
     <color name="black_54">#89000000</color>
     <color name="black_87">#dd000000</color>
-    <color name="black_26">#42000000</color>
     <color name="amber">#FFC107</color>
 </resources>

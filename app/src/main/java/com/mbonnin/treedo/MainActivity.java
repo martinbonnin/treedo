@@ -82,7 +82,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     private boolean mIsDebuggable;
     private long mLastSaveTime;
     private boolean mReordering;
-    private ImageView mFab;
 
     private void updateActionBar() {
         if (listViewStack.size() > 1) {
@@ -112,7 +111,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
         listView.setListener(new ItemListView.Listener() {
             @Override
-            public void onDirectoryClicked(Item item) {
+            public void onFolderClicked(Item item) {
                 pushListView(item, true);
             }
         });
@@ -187,8 +186,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         });
 
         saveData(false);
-
-        mFab.animate().translationY(0).setDuration(300).start();
     }
 
     @Override
