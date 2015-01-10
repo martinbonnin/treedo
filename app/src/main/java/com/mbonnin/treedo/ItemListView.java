@@ -10,6 +10,8 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -27,6 +29,7 @@ public class ItemListView extends LinearLayout {
     private ItemAdapter mAdapter;
     private RecyclerView mRecyclerView;
     private Item mItem;
+    private EditText mEditText;
 
     private void init() {
         setOrientation(VERTICAL);
@@ -48,6 +51,24 @@ public class ItemListView extends LinearLayout {
         init();
     }
 
+    private void onAddItem() {
+        Item item = new Item();
+        item.text = mEditText.getText().toString();
+        item.checked = false;
+        item.isAFolder = mType == Item.TYPE_FOLDER;
+
+        mAdapter.add(item);
+        mEditText.setText("");
+        mEditText.clearFocus();
+
+        InputMethodManager inputManager =
+                (InputMethodManager) getContext().
+                        getSystemService(Context.INPUT_METHOD_SERVICE);
+        inputManager.hideSoftInputFromWindow(
+                mEditText.getWindowToken(),
+                InputMethodManager.HIDE_NOT_ALWAYS);
+    }
+
     private void createListView(int type) {
         if (mEmptyView != null) {
             removeView(mEmptyView);
@@ -57,20 +78,24 @@ public class ItemListView extends LinearLayout {
         mType = type;
 
         final View footer = LayoutInflater.from(getContext()).inflate(R.layout.listview_footer, null);
-        EditText editText = (EditText)footer.findViewById(R.id.edit_text);
-        editText.setHint(mType == Item.TYPE_FOLDER ? R.string.new_folder : R.string.new_item);
-        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        mEditText = (EditText)footer.findViewById(R.id.edit_text);
+        mEditText.setHint(mType == Item.TYPE_FOLDER ? R.string.new_folder : R.string.new_item);
+        mEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        mEditText.setSingleLine(true);
+        mEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                Item item = new Item();
-                item.text = v.getText().toString();
-                item.checked = false;
-                item.isAFolder = mType == Item.TYPE_FOLDER;
-
-                mAdapter.add(item);
-
-                v.setText("");
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    onAddItem();
+                }
                 return true;
+            }
+        });
+        final Button button = (Button)footer.findViewById(R.id.add_button);
+        button.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onAddItem();
             }
         });
 
