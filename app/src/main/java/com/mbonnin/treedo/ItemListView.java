@@ -6,6 +6,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -52,6 +53,19 @@ public class ItemListView extends LinearLayout {
     }
 
     private void onAddItem() {
+        if (mEditText.getText().equals("")) {
+            mEditText.clearFocus();
+
+            InputMethodManager inputManager =
+                    (InputMethodManager) getContext().
+                            getSystemService(Context.INPUT_METHOD_SERVICE);
+            inputManager.hideSoftInputFromWindow(
+                    mEditText.getWindowToken(),
+                    InputMethodManager.HIDE_NOT_ALWAYS);
+
+            return;
+        }
+
         Item item = new Item();
         item.text = mEditText.getText().toString();
         item.checked = false;
@@ -59,17 +73,9 @@ public class ItemListView extends LinearLayout {
 
         mAdapter.add(item);
         mEditText.setText("");
-        mEditText.clearFocus();
-
-        InputMethodManager inputManager =
-                (InputMethodManager) getContext().
-                        getSystemService(Context.INPUT_METHOD_SERVICE);
-        inputManager.hideSoftInputFromWindow(
-                mEditText.getWindowToken(),
-                InputMethodManager.HIDE_NOT_ALWAYS);
     }
 
-    private void createListView(int type) {
+    private void createListView(int type, boolean focus) {
         if (mEmptyView != null) {
             removeView(mEmptyView);
             mEmptyView = null;
@@ -132,6 +138,11 @@ public class ItemListView extends LinearLayout {
         layoutParams.weight = 0;
         addView(footer, layoutParams);
 
+        if (focus) {
+            mEditText.requestFocus();
+            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.showSoftInput(mEditText, InputMethodManager.SHOW_IMPLICIT);
+        }
     }
 
     public void setItem(final Item item) {
@@ -146,21 +157,24 @@ public class ItemListView extends LinearLayout {
             subFoldersButton.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    createListView(Item.TYPE_FOLDER);
+                    createListView(Item.TYPE_FOLDER, true);
                 }
             });
 
             itemButton.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    createListView(Item.TYPE_ITEM);
+                    createListView(Item.TYPE_ITEM, true);
                 }
             });
 
-            addView(mEmptyView);
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            layoutParams.weight = 1;
+
+            addView(mEmptyView, layoutParams);
         } else {
             int type = item.children.get(0).isAFolder ? Item.TYPE_FOLDER : Item.TYPE_ITEM;
-            createListView(type);
+            createListView(type, false);
         }
     }
 
