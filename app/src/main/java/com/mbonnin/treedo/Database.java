@@ -69,9 +69,9 @@ public class Database {
 
     public static void sync() {
         if (sThread != null) {
-            sendMessage(MESSAGE_SYNC, null);
             boolean continueWaiting = true;
             synchronized (sDatabase) {
+                sendMessage(MESSAGE_SYNC, null);
                 while (continueWaiting) {
                     try {
                         sDatabase.wait();
