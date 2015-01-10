@@ -89,6 +89,10 @@ public class ItemView2 extends FrameLayout {
         return mItem;
     }
 
+    public void setGrabable(boolean grabable) {
+        mHandle.setVisibility(grabable ? View.VISIBLE : View.GONE);
+    }
+
     public abstract static class Listener {
         public abstract void onArrowClicked();
     }

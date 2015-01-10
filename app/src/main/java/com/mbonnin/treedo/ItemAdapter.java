@@ -13,6 +13,7 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     private final Context mContext;
     private Item mItem;
     OnFolderClickedListener mOnFolderClickedListener;
+    private boolean mGrabable;
 
     public ItemAdapter(Context context, Item item) {
         mItem = item;
@@ -41,6 +42,7 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
         Item item = mItem.children.get(position);
         holder.mItemView.cancelTranslation();
         holder.mItemView.setItem(item);
+        holder.mItemView.setGrabable(mGrabable);
         holder.mItemView.setListener(new ItemView2.Listener() {
 
             @Override
@@ -63,5 +65,10 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
 
     public abstract static class OnFolderClickedListener {
         public abstract void onFolderClicked(Item item);
+    }
+
+    public void setGrablable(boolean grabable) {
+        mGrabable = grabable;
+        notifyDataSetChanged();
     }
 }

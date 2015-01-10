@@ -3,13 +3,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <RelativeLayout
+    <!-- we need the LinearLayout because some view become View.GONE and this cannot happen in the
+     RelativeLayout-->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="8dp"
-        android:paddingLeft="8dp"
-        android:paddingRight="8dp"
-        android:paddingTop="8dp">
+        android:gravity="center">
 
         <ImageView
             android:id="@+id/handle"
@@ -34,22 +33,34 @@
             android:layout_toRightOf="@+id/checkbox"
             android:src="@drawable/folder" />
 
-        <com.mbonnin.treedo.ItemEditText
-            android:id="@+id/edit_text"
+        <!-- we need the RelativeLayout to make the EditText occupy the whole space. Just using a
+        LinearLayout and weight:"1" is not enough... -->
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
-            android:layout_toLeftOf="@+id/arrow"
-            android:layout_toRightOf="@+id/folder"
-            android:background="@null"
-            android:inputType="textMultiLine" />
+            android:paddingBottom="8dp"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:paddingTop="8dp">
 
-        <ImageView
-            android:id="@+id/arrow"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_alignParentRight="true"
-            android:layout_centerInParent="true"
-            android:src="@drawable/arrow" />
-    </RelativeLayout>
+
+            <com.mbonnin.treedo.ItemEditText
+                android:id="@+id/edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_toLeftOf="@+id/arrow"
+                android:layout_alignParentLeft="true"
+                android:background="@null"
+                android:inputType="textMultiLine" />
+
+            <ImageView
+                android:id="@+id/arrow"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_alignParentRight="true"
+                android:layout_centerInParent="true"
+                android:src="@drawable/arrow" />
+        </RelativeLayout>
+    </LinearLayout>
 </com.mbonnin.treedo.ItemView2>
