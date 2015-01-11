@@ -26,6 +26,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -96,6 +97,13 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     private void pushListView(Item item, boolean animate) {
         long start = System.currentTimeMillis();
 
+        if (listViewStack.size() > 0) {
+            InputMethodManager imm = (InputMethodManager)getSystemService(
+                    Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(listViewStack.peek().getWindowToken(), 0);
+        }
+
+
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         RelativeLayout relativeLayout = new RelativeLayout(this);
         relativeLayout.setGravity(Gravity.BOTTOM);
@@ -152,6 +160,10 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
             finish();
             return;
         }
+
+        InputMethodManager imm = (InputMethodManager)getSystemService(
+                Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(listViewStack.peek().getWindowToken(), 0);
 
         listViewStack.pop();
 
