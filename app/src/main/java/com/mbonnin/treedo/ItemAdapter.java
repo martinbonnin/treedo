@@ -3,7 +3,6 @@ package com.mbonnin.treedo;
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 
 /**
@@ -25,15 +24,15 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public ItemView2 mItemView;
-        public ViewHolder(ItemView2 itemView) {
+        public ItemView mItemView;
+        public ViewHolder(ItemView itemView) {
             super(itemView);
             mItemView = itemView;
         }
     }
     @Override
     public ItemAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        ItemView2 itemView = (ItemView2)LayoutInflater.from(mContext).inflate(R.layout.item_view_2, null);
+        ItemView itemView = (ItemView)LayoutInflater.from(mContext).inflate(R.layout.item_view, null);
         return new ViewHolder(itemView);
     }
 
@@ -43,7 +42,7 @@ public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
         holder.mItemView.cancelTranslation();
         holder.mItemView.setItem(item);
         holder.mItemView.setGrabable(mGrabable);
-        holder.mItemView.setListener(new ItemView2.Listener() {
+        holder.mItemView.setListener(new ItemView.Listener() {
 
             @Override
             public void onArrowClicked() {
