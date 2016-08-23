@@ -1,8 +1,13 @@
 <resources>
     <style name="TreeDo"
-        parent="Theme.AppCompat.Light.DarkActionBar">
+        parent="Theme.AppCompat.Light.NoActionBar">
         <item name="colorPrimary">@color/muted_500</item>
         <item name="colorPrimaryDark">@color/muted_700</item>
         <item name="colorAccent">@color/vibrant_200</item>
+        <item name="toolbarStyle">@style/MyToolbarStyle</item>
+    </style>
+    <style name= "MyToolbarStyle" parent="@style/Widget.AppCompat.Toolbar" >
+        <item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
+        <item name="titleTextColor">@android:color/white</item>
     </style>
 </resources>

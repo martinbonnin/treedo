@@ -1,593 +1,310 @@
 package com.mbonnin.treedo;
 
+import android.Manifest;
 import android.accounts.AccountManager;
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
-import android.content.res.Configuration;
-import android.graphics.Color;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
-import android.util.TypedValue;
-import android.view.Display;
-import android.view.Gravity;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewPropertyAnimator;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.AdapterView;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.RelativeLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.google.android.gms.auth.GoogleAuthException;
-import com.google.android.gms.auth.GoogleAuthUtil;
-import com.google.android.gms.auth.GooglePlayServicesAvailabilityException;
-import com.google.android.gms.auth.UserRecoverableAuthException;
-import com.google.android.gms.common.AccountPicker;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.tasks.RuntimeExecutionException;
+import com.google.api.client.extensions.android.http.AndroidHttp;
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
+import com.google.api.client.http.AbstractInputStreamContent;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.ExponentialBackOff;
+import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.DriveScopes;
+import com.google.api.services.drive.model.File;
 
-import com.google.android.gms.common.GooglePlayServicesUtil;
+import org.androidannotations.annotations.Bean;
+import org.androidannotations.annotations.EActivity;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Stack;
+import java.util.UUID;
+
+import rx.Observer;
+import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
+import rx.util.async.Async;
 
 
-public class MainActivity extends ActionBarActivity implements BackupManager.OAuthManager {
+@EActivity
+public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
 
-    private static final int MENU_ID_ABOUT = 0;
-    private static final int MENU_ID_ENABLE_BACKUP = 1;
-    private static final int MENU_ID_DISABLE_BACKUP = 2;
-    private static final int MENU_ID_IMPORT = 3;
-    private static final int MENU_ID_FLUSH_DATABASE = 4;
-    private static final int MENU_ID_LOGOUT = 5;
-    private static final int MENU_ID_START_REORDER = 6;
-    private static final int MENU_ID_STOP_REORDER = 7;
+    private static final String PREFERENCE_ACCOUNT_NAME = "account_name";
+    private static final String PREFERENCE_UUID = "uuid";
+    public static final String PREFERENCE_FILE_ID = "file_id";
 
-    private static final String PREFERENCE_ENABLE_BACKUP = "enable_backup";
-    private static final String PREFERENCE_OAUTH_TOKEN = "oauth_token";
-    private static final String PREFERENCE_OAUTH_EMAIL = "email";
+    public static final int ACTIVITY_RESULT_ACCOUNT_CHOSEN = 1;
+    public static final int ACTIVITY_RESULT_GOOGLE_PLAY_SERVICES = 2;
+    public static final int ACTIVITY_RESULT_OAUTH_GRANTED = 3;
+    public static final int ACTIVITY_RESULT_BACKUP_SELECTED = 4;
+    public static final int ACTIVITY_RESULT_IAB_FINISHED = 5;
 
-    public static final int REQUEST_CODE_CHOOSE_ACCOUNT = 1;
-    private static final int REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR = 2;
+    private static final int PERMISSION_RESULT_GET_ACCOUNTS = 1;
+    public static final String EXTRA_ID = "EXTRA_ID";
 
-    private FrameLayout mFrameLayout;
-    private Stack<ItemListView> listViewStack = new Stack<ItemListView>();
-    private android.support.v7.app.ActionBar mActionBar;
-    private BackupManager mBackupManager;
-    private FrameLayout mTopLayout;
-    private com.mbonnin.treedo.ProgressBar mProgressBar;
-    private int mShowProgressBar;
+    private static MainActivity sActivity;
 
-    BackupManager.OAuthTokenCallback mOAuthCallback;
-    private String mOAuthScope;
-    private String mOAuthEmail;
-    private String mOAuthToken;
+    private AnimatedFrameLayout<MainView> mAnimatedFrameLayout;
 
-    private boolean mIsDebuggable;
-    private long mLastSaveTime;
-    private boolean mReordering;
+    private static final String[] SCOPES = {DriveScopes.DRIVE_FILE, DriveScopes.DRIVE};
 
-    private void updateActionBar() {
-        if (listViewStack.size() > 1) {
-            mActionBar.setDisplayHomeAsUpEnabled(true);
-            mActionBar.setTitle(listViewStack.peek().getTitle());
-        } else {
-            mActionBar.setDisplayHomeAsUpEnabled(false);
-            mActionBar.setTitle(R.string.app_name);
+    /**
+     * it is tempting to remove this stack and recreate the view each time but if we do this, we lose the scroll offset
+     */
+    private Stack<MainView> mStack = new Stack();
+
+    @Bean
+    PaperDatabase mDb;
+    private GoogleAccountCredential mCredential;
+    private Drive mService;
+    private String mFileName;
+    private String mFileId;
+    private Subscription mSubscription;
+    @Bean
+    InAppBilling mInAppBilling;
+
+    private Observer<? super Boolean> mSubscriber = new Observer<Boolean>() {
+        @Override
+        public void onCompleted() {
+
+        }
+
+        @Override
+        public void onError(Throwable e) {
+            mSubscription = null;
+            handleDriveException(e);
+            e.printStackTrace();
+        }
+
+        @Override
+        public void onNext(Boolean aBoolean) {
+            mSubscription = null;
+            Log.d(TAG, "backup success");
+        }
+    };
+    @Bean
+    FirebaseUtils mFirebaseUtils;
+
+    private void handleDriveException(Throwable e) {
+        if (e instanceof RuntimeException) {
+            if (e.getCause() instanceof UserRecoverableAuthIOException) {
+                startActivityForResult(((UserRecoverableAuthIOException) e.getCause()).getIntent(),
+                        ACTIVITY_RESULT_OAUTH_GRANTED);
+            } else if (e.getCause() instanceof GooglePlayServicesAvailabilityIOException) {
+                snackBar(getString(R.string.need_google_play_services));
+            }
         }
     }
 
-    private void pushListView(Item item, boolean animate) {
+    private void setView(MainView view, int animate) {
         long start = System.currentTimeMillis();
 
-        if (listViewStack.size() > 0) {
-            InputMethodManager imm = (InputMethodManager)getSystemService(
-                    Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(listViewStack.peek().getWindowToken(), 0);
-        }
+        backup();
+
+        mFirebaseUtils.logScreen();
+        mAnimatedFrameLayout.setView(view, animate);
+
+        Log.d("timing", "closeInpu: " + System.currentTimeMillis());
+        closeSoftInput();
 
 
-        ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        RelativeLayout relativeLayout = new RelativeLayout(this);
-        relativeLayout.setGravity(Gravity.BOTTOM);
-
-        // a dummy layout used to intercept the focus at startup;
-        LinearLayout dummyLayout = new LinearLayout(this);
-        dummyLayout.setFocusableInTouchMode(true);
-        relativeLayout.addView(dummyLayout, 0, 0);
-
-        ItemListView listView = new ItemListView(this);
-        listView.setItem(item);
-        relativeLayout.addView(listView, layoutParams);
-
-        listView.setListener(new ItemListView.Listener() {
-            @Override
-            public void onFolderClicked(Item item) {
-                pushListView(item, true);
-            }
-        });
-        Utils.log("pushListView1() took " + (System.currentTimeMillis() - start) + " ms");
-
-        mFrameLayout.addView(relativeLayout, layoutParams);
-
-        if (animate) {
-            Display display = getWindowManager().getDefaultDisplay();
-            relativeLayout.setTranslationX(display.getWidth());
-            ViewPropertyAnimator animator = relativeLayout.animate();
-            animator.translationX(0).setDuration(300).start();
-            animator.setListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    mFrameLayout.clearFocus();
-                }
-            });
-        } else {
-            mFrameLayout.clearFocus();
-        }
-
-        listViewStack.push(listView);
-
-        updateActionBar();
-        Utils.log("pushListView2() took " + (System.currentTimeMillis() - start) + " ms");
-
-        saveData(false);
+        Utils.log("setView took " + (System.currentTimeMillis() - start) + " ms");
     }
 
     public void onBackPressed() {
-        popListView();
+        popMainView();
     }
 
-    private void popListView() {
-        int count = mFrameLayout.getChildCount();
-        if (count == 1) {
-            finish();
+    private void popMainView() {
+        if (mStack.size() > 1) {
+            mStack.pop();
+            mStack.peek().refresh();
+            setView(mStack.peek(), AnimatedFrameLayout.ANIMATE_EXIT);
             return;
+        } else if (mStack.size() == 1) {
+            MainView mainView = mStack.peek();
+            Node parent = mainView.getNode().parent;
+            if (parent != null) {
+                /**
+                 * we came through a deeplink, so we must create the parent
+                 */
+                mStack.pop();
+                pushNode(parent, AnimatedFrameLayout.ANIMATE_EXIT);
+                return;
+            }
         }
 
-        InputMethodManager imm = (InputMethodManager)getSystemService(
+        moveTaskToBack(true);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntent();
+    }
+
+    private void closeSoftInput() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(
                 Context.INPUT_METHOD_SERVICE);
-        imm.hideSoftInputFromWindow(listViewStack.peek().getWindowToken(), 0);
+        imm.hideSoftInputFromWindow(mAnimatedFrameLayout.getWindowToken(), 0);
+    }
 
-        listViewStack.pop();
+    public void openSoftInput(View view) {
+        InputMethodManager imm = (InputMethodManager) getSystemService(
+                Context.INPUT_METHOD_SERVICE);
+        imm.showSoftInput(view, 0);
+    }
 
-        updateActionBar();
+    public String getPreference(String key, String defaultValue) {
+        return getPreferences(MODE_PRIVATE).getString(key, defaultValue);
+    }
 
-        final View relativeLayout = mFrameLayout.getChildAt(count -1);
-
-        Display display = getWindowManager().getDefaultDisplay();
-        relativeLayout.setTranslationX(0);
-        ViewPropertyAnimator animator = relativeLayout.animate();
-        animator.translationX(display.getWidth()).setDuration(300).start();
-        animator.setListener(new Animator.AnimatorListener() {
-            @Override
-            public void onAnimationStart(Animator animation) {
-
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                mFrameLayout.removeView(relativeLayout);
-            }
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-
-            }
-
-            @Override
-            public void onAnimationRepeat(Animator animation) {
-
-            }
-        });
-
-        saveData(false);
+    private void putPreference(String key, String value) {
+        getPreferences(MODE_PRIVATE).edit().putString(key, value).apply();
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mIsDebuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-
-        Utils.init(getApplicationContext(), mIsDebuggable);
+        sActivity = this;
 
 
-        mOAuthToken = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_TOKEN, "");
-        mOAuthEmail = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_EMAIL, "");
-        mBackupManager = new BackupManager(this, this, mOAuthToken);
+        mAnimatedFrameLayout = new AnimatedFrameLayout<>(this);
 
-        mTopLayout = new FrameLayout(this);
-        mFrameLayout = new FrameLayout(this);
+        /**
+         * Create a dummy intermediate layout to intercep focus
+         * http://stackoverflow.com/questions/1555109/stop-edittext-from-gaining-focus-at-activity-startup
+         */
+        LinearLayout linearLayout = new LinearLayout(this);
+        LinearLayout linearLayout2 = new LinearLayout(this);
+        linearLayout2.setFocusable(true);
+        linearLayout2.setFocusableInTouchMode(true);
+        LinearLayout.LayoutParams layoutParams2 = new LinearLayout.LayoutParams(0, 0);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        linearLayout.addView(linearLayout2, layoutParams2);
+        LinearLayout.LayoutParams layoutParams3 = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        linearLayout.addView(mAnimatedFrameLayout, layoutParams3);
 
-        mActionBar = getSupportActionBar();
-        mActionBar.setLogo(R.drawable.treedo);
+        setContentView(linearLayout);
 
-        mProgressBar = new com.mbonnin.treedo.ProgressBar(this);
-        mProgressBar.setVisibility(View.GONE);
+        String uuid = getPreference(PREFERENCE_UUID, null);
+        if (uuid == null) {
+            uuid = UUID.randomUUID().toString();
+            putPreference(PREFERENCE_UUID, uuid);
+        }
+        mFileName = "TreeDo_" + uuid;
 
-        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layoutParams.topMargin = 0;
-        mTopLayout.addView(mFrameLayout);
-        mTopLayout.addView(mProgressBar, layoutParams);
+        // Initialize credentials and service object.
+        mCredential = GoogleAccountCredential.usingOAuth2(
+                getApplicationContext(), Arrays.asList(SCOPES))
+                .setBackOff(new ExponentialBackOff());
+        String accountName = getPreference(PREFERENCE_ACCOUNT_NAME, null);
+        if (accountName != null) {
+            createService(accountName);
+        }
+        mFileId = getPreference(PREFERENCE_FILE_ID, null);
 
-        setContentView(mTopLayout);
+        handleIntent();
+    }
 
-        Item rootItem = Database.getRoot(this);
-        pushListView(rootItem, false);
+    private void handleIntent() {
+        Intent intent = getIntent();
+        mStack.clear();
+
+        Node node = mDb.getRoot();
+        if (intent == null) {
+        } else if (intent.hasExtra(EXTRA_ID)) {
+            long id = Long.parseLong(intent.getStringExtra(EXTRA_ID));
+            node = mDb.find(mDb.getRoot(), id);
+        }
+        pushNode(node, AnimatedFrameLayout.ANIMATE_NONE);
     }
 
     @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        setContentView(mTopLayout);
-    }
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        int order = 0;
-        if (mReordering) {
-            MenuItem menuItem = menu.add(Menu.NONE, MENU_ID_STOP_REORDER, order++, getString(R.string.stop_reorder));
-            menuItem.setIcon(R.drawable.check);
-            menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-        } else {
-            SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+    protected void onDestroy() {
+        super.onDestroy();
 
-            MenuItem menuItem = menu.add(Menu.NONE, MENU_ID_START_REORDER, order++, getString(R.string.reorder));
-            menuItem.setIcon(R.drawable.swap);
-            menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-
-            menu.add(Menu.NONE, MENU_ID_IMPORT, order++, getString(R.string.action_import));
-
-            if (preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false)) {
-                menu.add(Menu.NONE, MENU_ID_DISABLE_BACKUP, order++, getString(R.string.action_disable_backup));
-            } else {
-                menu.add(Menu.NONE, MENU_ID_ENABLE_BACKUP, order++, getString(R.string.action_enable_backup));
-            }
-
-            if (mIsDebuggable) {
-                menu.add(Menu.NONE, MENU_ID_FLUSH_DATABASE, order++, getString(R.string.flush_database));
-            }
-            menu.add(Menu.NONE, MENU_ID_ABOUT, order++, getString(R.string.action_about));
-
-            if (!mOAuthEmail.equals("") || !mOAuthToken.equals("")) {
-                menu.add(Menu.NONE, MENU_ID_LOGOUT, order++, getString(R.string.action_logout));
-            }
-        }
-        return true;
+        mInAppBilling.release();
+        sActivity = null;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        switch(id) {
-            case MENU_ID_ABOUT:
-                showAboutDialog();
-                return true;
-            case android.R.id.home:
-                if (listViewStack.size() > 1) {
-                    popListView();
-                }
-                return true;
-            case MENU_ID_ENABLE_BACKUP:
-                enableBackup();
-                return true;
-            case MENU_ID_DISABLE_BACKUP:
-                disableBackup();
-                return true;
-            case MENU_ID_FLUSH_DATABASE:
-                flushDatabase();
-                return true;
-            case MENU_ID_IMPORT:
-                importBackup();
-                return true;
-            case MENU_ID_LOGOUT:
-                logout();
-                return true;
-            case MENU_ID_START_REORDER:
-                startReorder();
-                return true;
-            case MENU_ID_STOP_REORDER:
-                stopReorder();
-                return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
+    public void showAboutDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.about_dialog, null);
 
-    private void startReorder() {
-        listViewStack.peek().setEditMode(true);
-
-        mActionBar.setTitle("");
-        mActionBar.setDisplayHomeAsUpEnabled(false);
-        mReordering = true;
-        invalidateOptionsMenu();
-    }
-
-    private void stopReorder() {
-        listViewStack.peek().setEditMode(false);
-
-        mActionBar.setCustomView(null);
-        updateActionBar();
-
-        mReordering = false;
-        invalidateOptionsMenu();
-    }
-
-    private void logout() {
-        mOAuthEmail = "";
-        mOAuthToken = "";
-        getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_EMAIL,"").apply();
-        getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_TOKEN, "").apply();
-
-        ClearTokenTask task = new ClearTokenTask(mOAuthToken) ;
-        task.execute();
-        mBackupManager.clearToken();
-        disableBackup();
-        invalidateOptionsMenu();
-    }
-
-    private void setRootItem(Item root) {
-        mFrameLayout.removeAllViews();
-        listViewStack.clear();
-        Database.setRoot(root, this);
-        Database.saveAsync(root);
-        pushListView(root, false);
-    }
-
-    private void flushDatabase() {
-        Item item = Item.createRoot();
-        setRootItem(item);
-    }
-
-    @Override
-    public void getNewOAuthToken(BackupManager.OAuthTokenCallback callback, String scope) {
-        if (mOAuthCallback != null) {
-            Utils.log("We cannot request 2 tokens at the same time");
-            return;
-        }
-
-        mOAuthCallback = callback;
-        mOAuthScope = scope;
-
-        if (mOAuthEmail.equals("")) {
-            String[] accountTypes = new String[]{"com.google"};
-            Intent intent = AccountPicker.newChooseAccountIntent(null, null,
-                    accountTypes, false, null, null, null, null);
-
-            startActivityForResult(intent, REQUEST_CODE_CHOOSE_ACCOUNT);
-        } else {
-            GetTokenTask task = new GetTokenTask(mOAuthEmail, scope);
-            task.execute();
-        }
-    }
-
-    private void importBackup() {
-        final DialogBuilder builder = new DialogBuilder(this);
-
-        if (!isConnected()) {
-            showBackupDialog(R.string.connection_needed, false);
-            return;
-        }
-
-        builder.setTitle(getString(R.string.select_backup));
-        builder.setIcon(R.drawable.backup_import);
-        builder.setView(getLayoutInflater().inflate(R.layout.progress_bar, null));
-        builder.setButtonLabel(getString(R.string.cancel));
-        builder.setListener(new DialogBuilder.Listener() {
-            @Override
-            public void onButtonClick() {
-
-            }
-        });
-
-        final AlertDialog dialog = builder.show();
-
-        final BackupManager.BackupCallback backupCallback = new BackupManager.BackupCallback() {
-            public void onBackupDone(Item backup) {
-                if (backup != null) {
-                    setRootItem(backup);
-                } else {
-                    showBackupDialog(R.string.get_backup_failed, false);
-                }
-                hideProgressBar();
-            }
-        };
-
-        final AdapterView.OnItemClickListener clickListener = new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                BackupManager.Drive drive = (BackupManager.Drive) parent.getItemAtPosition(position);
-                showProgressBar();
-
-                mBackupManager.getBackup(drive, backupCallback);
-
-                dialog.dismiss();
-            }
-        };
-
-        BackupManager.DrivesCallback callback = new BackupManager.DrivesCallback() {
-            @Override
-            public void onDrives(ArrayList<BackupManager.Drive> drives) {
-                if (drives != null) {
-                    Context context = MainActivity.this;
-                    BackupAdapter adapter = new BackupAdapter(context, drives);
-                    ListView listView = new ListView(context);
-                    listView.setAdapter(adapter);
-                    listView.setOnItemClickListener(clickListener);
-                    builder.setView(listView);
-                }
-            }
-        };
-
-        mBackupManager.getBackupList(callback);
-    }
-
-    private void setBackupEnabled(boolean enabled) {
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        preferences.edit().putBoolean(PREFERENCE_ENABLE_BACKUP, enabled).apply();
-        invalidateOptionsMenu();
-    }
-
-    private boolean hasBackupEnabled() {
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        return preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false);
-    }
-
-    private void disableBackup() {
-        setBackupEnabled(false);
-        showBackupDialog(R.string.backup_disabled_successfully, false);
-    }
-
-    private void showAboutDialog() {
-        DialogBuilder builder = new DialogBuilder(this);
-        ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-
-        builder.setTitle(getString(R.string.app_name));
-        builder.setIcon(R.drawable.treedo_blue);
-
-        ScrollView scrollView = new ScrollView(this);
-        TextView textView = new TextView(this);
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        TextView textView = ((TextView) view.findViewById(R.id.about));
         textView.setText(Html.fromHtml(getString(R.string.about)));
         textView.setMovementMethod(LinkMovementMethod.getInstance());
-        scrollView.addView(textView, layoutParams);
 
-        builder.setView(scrollView);
+        Dialog dialog = new AlertDialog.Builder(this)
+                .setIcon(getResources().getDrawable(R.drawable.treedo_blue))
+                .setTitle(getString(R.string.app_name))
+                .setView(view).setPositiveButton(getString(R.string.ok), (dialog1, which) -> {
+                    dialog1.dismiss();
+                })
+                .create();
 
-        builder.show();
+        dialog.show();
     }
 
-    public void showProgressBar() {
-        if (mShowProgressBar == 0) {
-            mProgressBar.setVisibility(View.VISIBLE);
-        }
-
-        mShowProgressBar++;
-    }
-
-    public void hideProgressBar() {
-        mShowProgressBar--;
-        if (mShowProgressBar == 0) {
-            mProgressBar.setVisibility(View.GONE);
+    public static void pushNodeG(Node node) {
+        if (sActivity != null) {
+            sActivity.pushNode(node, AnimatedFrameLayout.ANIMATE_ENTER);
         }
     }
 
+    public void pushNode(Node node, int animate) {
+        MainView view = MainView_.build(this);
+        Log.d("timing", "setNode  : " + System.currentTimeMillis());
+        view.setNode(this, node);
+        mStack.push(view);
 
-    private void showBackupDialog(int message_id, boolean success) {
-        DialogBuilder builder = new DialogBuilder(this);
-
-        if (success) {
-            builder.setIcon(R.drawable.backup_on);
-        } else {
-            builder.setIcon(R.drawable.backup_off);
-        }
-        builder.setTitle(getString(R.string.app_name));
-        TextView textView = new TextView(this);
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP,18);
-        textView.setText(message_id);
-
-        builder.setView(textView);
-
-        builder.show();
+        Log.d("timing", "setView  : " + System.currentTimeMillis());
+        setView(view, animate);
     }
 
-    public class ClearTokenTask extends AsyncTask <Void, Void, Void> {
-        String mToken;
-        Exception mException;
-
-        ClearTokenTask(String token) {
-            this.mToken = token;
-        }
-
-        /**
-         * Executes the asynchronous job. This runs when you call execute()
-         * on the AsyncTask instance.
-         */
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                GoogleAuthUtil.clearToken(MainActivity.this, mToken);
-            } catch (GoogleAuthException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return null;
-        }
+    public void snackBar(String string) {
+        Snackbar.make(mAnimatedFrameLayout, string, Snackbar.LENGTH_SHORT).show();
     }
 
-    public class GetTokenTask extends AsyncTask <Void, Void, Integer> {
-        String mEmail;
-        String mScope;
-        String mToken;
-        Exception mException;
-
-        GetTokenTask(String email, String scope) {
-            this.mScope = scope;
-            this.mEmail = email;
-        }
-
-        /**
-         * Executes the asynchronous job. This runs when you call execute()
-         * on the AsyncTask instance.
-         */
-        @Override
-        protected Integer doInBackground(Void... params) {
-            try {
-                mToken = GoogleAuthUtil.getToken(MainActivity.this, mEmail, mScope);
-            } catch (Exception e) {
-                mException = e;
-            }
-            return 0;
-        }
-
-        @Override
-        protected void onPostExecute(Integer integer) {
-            if (mException != null) {
-                if (mException instanceof GooglePlayServicesAvailabilityException) {
-                    // The Google Play services APK is old, disabled, or not present.
-                    // Show a dialog created by Google Play services that allows
-                    // the user to update the APK
-                    int statusCode = ((GooglePlayServicesAvailabilityException)mException)
-                            .getConnectionStatusCode();
-                    Dialog dialog = GooglePlayServicesUtil.getErrorDialog(statusCode,
-                            MainActivity.this,
-                            REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR);
-                    dialog.show();
-                } else if (mException instanceof UserRecoverableAuthException) {
-                    // Unable to authenticate, such as when the user has not yet granted
-                    // the app access to the account, but the user can fix this.
-                    // Forward the user to an activity in Google Play services.
-                    Intent intent = ((UserRecoverableAuthException)mException).getIntent();
-                    startActivityForResult(intent,
-                            REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR);
-                } else {
-                    // IO exception or other
-                    mOAuthCallback.onOAuthToken(mToken);
-                    mOAuthCallback = null;
-                }
-            } else {
-                mOAuthToken = mToken;
-                getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_TOKEN, mToken).apply();
-                mOAuthCallback.onOAuthToken(mToken);
-                mOAuthCallback = null;
-            }
+    public static void snackBarG(String string) {
+        if (sActivity != null) {
+            sActivity.snackBar(string);
         }
     }
 
@@ -595,33 +312,95 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == REQUEST_CODE_CHOOSE_ACCOUNT) {
-            if (mOAuthCallback == null) {
-                Utils.log("onActivityResult with mOAuthCallback null");
-                return;
-            }
+        switch (requestCode) {
+            case ACTIVITY_RESULT_GOOGLE_PLAY_SERVICES:
+                if (resultCode != RESULT_OK) {
+                    snackBar(getString(R.string.need_google_play_services));
+                } else {
+                    enableBackup();
+                }
+                break;
+            case ACTIVITY_RESULT_ACCOUNT_CHOSEN:
+                if (resultCode == RESULT_OK && data != null &&
+                        data.getExtras() != null) {
+                    String accountName =
+                            data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+                    if (accountName != null) {
+                        putPreference(PREFERENCE_ACCOUNT_NAME, accountName);
 
-            if (resultCode == RESULT_OK) {
-                Utils.log("User account ok");
-                mOAuthEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-                getPreferences(MODE_PRIVATE).edit().putString(PREFERENCE_OAUTH_EMAIL, mOAuthEmail).apply();
-                GetTokenTask task = new GetTokenTask(mOAuthEmail, mOAuthScope);
-                task.execute();
+                        createService(accountName);
+                        enableBackup();
+                    }
+                }
+                break;
+            case ACTIVITY_RESULT_OAUTH_GRANTED:
+                if (resultCode == RESULT_OK) {
+                    enableBackup();
+                }
+                break;
+            case ACTIVITY_RESULT_BACKUP_SELECTED:
+                if (data != null) {
+                    openBackup(data.getData());
+                }
+                break;
+            case ACTIVITY_RESULT_IAB_FINISHED:
+                mInAppBilling.getHelper().handleActivityResult(requestCode, resultCode, data);
+                break;
 
-                invalidateOptionsMenu();
-            } else {
-                mOAuthCallback.onOAuthToken(null);
-                mOAuthCallback = null;
-            }
-        } else if (requestCode == REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR) {
-            if (resultCode == RESULT_OK) {
-                GetTokenTask task = new GetTokenTask(mOAuthEmail, mOAuthScope);
-                task.execute();
-            } else {
-                mOAuthCallback.onOAuthToken(null);
-                mOAuthCallback = null;
+        }
+    }
+
+    private void openBackup(Uri uri) {
+        PaperDatabase.Data data = null;
+
+        InputStream inputStream = null;
+        try {
+            inputStream = getContentResolver().openInputStream(uri);
+            data = PaperDatabase.fromJson(inputStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                inputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
+
+        if (data == null) {
+            try {
+                inputStream = getContentResolver().openInputStream(uri);
+                data = PaperDatabase.fromHumanFormat(inputStream);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if (data == null || data.root == null || data.trash == null) {
+            snackBar(getString(R.string.cannot_open_backup));
+            return;
+        }
+
+        PaperDatabase.Data finalData = data;
+        Dialog dialog = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.backup_found))
+                .setMessage(R.string.do_you_want_to_replace)
+                .setPositiveButton(getString(R.string.ok), (dialog1, which) -> {
+                    mDb.setData(finalData);
+                    mStack.clear();
+                    pushNode(mDb.getRoot(), AnimatedFrameLayout.ANIMATE_NONE);
+                }).setNegativeButton(getString(R.string.cancel), (dialog1, which) -> {
+                    dialog1.dismiss();
+                })
+                .create();
+
+        dialog.show();
     }
 
     private boolean isConnected() {
@@ -635,60 +414,182 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         }
     }
 
-    private void putBackup() {
-        BackupManager.SaveCallback callback = new BackupManager.SaveCallback() {
-            @Override
-            public void onSave(boolean success) {
-            }
-        };
-        mBackupManager.putBackup(Database.getRoot(MainActivity.this), callback);
+    private void chooseAccount() {
+        String accountName = getPreference(PREFERENCE_ACCOUNT_NAME, null);
+        if (accountName != null) {
+            createService(accountName);
+            enableBackup();
+        } else {
+            // Start a dialog from which the user can choose an account
+            startActivityForResult(
+                    mCredential.newChooseAccountIntent(),
+                    ACTIVITY_RESULT_ACCOUNT_CHOSEN);
+        }
     }
-    private void enableBackup() {
-        if (!isConnected()) {
-            showBackupDialog(R.string.connection_needed, false);
-            return;
+
+    private void createService(String accountName) {
+        mCredential.setSelectedAccountName(accountName);
+        HttpTransport transport = AndroidHttp.newCompatibleTransport();
+        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+        mService = new com.google.api.services.drive.Drive.Builder(
+                transport, jsonFactory, mCredential)
+                .setApplicationName(getString(R.string.app_name))
+                .build();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_RESULT_GET_ACCOUNTS) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                enableBackup();
+            } else {
+                snackBar(getString(R.string.permission_needed));
+            }
+        }
+    }
+
+    private boolean isGooglePlayServicesAvailable() {
+        GoogleApiAvailability apiAvailability =
+                GoogleApiAvailability.getInstance();
+        final int connectionStatusCode =
+                apiAvailability.isGooglePlayServicesAvailable(this);
+        return connectionStatusCode == ConnectionResult.SUCCESS;
+    }
+
+    void showGooglePlayServicesAvailabilityErrorDialog(
+            final int connectionStatusCode) {
+        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
+        Dialog dialog = apiAvailability.getErrorDialog(
+                MainActivity.this,
+                connectionStatusCode,
+                ACTIVITY_RESULT_GOOGLE_PLAY_SERVICES);
+        dialog.show();
+    }
+
+    private void acquireGooglePlayServices() {
+        GoogleApiAvailability apiAvailability =
+                GoogleApiAvailability.getInstance();
+        final int connectionStatusCode =
+                apiAvailability.isGooglePlayServicesAvailable(this);
+        if (apiAvailability.isUserResolvableError(connectionStatusCode)) {
+            showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode);
+        }
+    }
+
+    Observer<? super String> mEnableBackupSubscriber = new Observer<String>() {
+
+
+        @Override
+        public void onCompleted() {
+
         }
 
-        showProgressBar();
+        @Override
+        public void onError(Throwable e) {
+            handleDriveException(e);
+            e.printStackTrace();
+        }
 
-        final BackupManager.ConnectCallback callback = new BackupManager.ConnectCallback() {
-            @Override
-            public void onConnect(boolean success) {
-                if (success) {
-                    setBackupEnabled(true);
-                    showBackupDialog(R.string.backup_enabled_successfully, true);
-                    putBackup();
-                } else {
-                    showBackupDialog(R.string.backup_enabling_failed, false);
+        @Override
+        public void onNext(String s) {
+            putPreference(PREFERENCE_FILE_ID, s);
+            mFileId = s;
+            snackBar(getString(R.string.backup_enabled));
+        }
+    };
+
+    public void enableBackup() {
+        if (!isConnected()) {
+            snackBar(getString(R.string.connection_needed));
+        } else if (!isGooglePlayServicesAvailable()) {
+            acquireGooglePlayServices();
+        } else if (Build.VERSION.SDK_INT >= 23 && !(checkCallingOrSelfPermission(Manifest.permission.GET_ACCOUNTS) == PackageManager.PERMISSION_GRANTED)) {
+            requestPermissions(new String[]{Manifest.permission.GET_ACCOUNTS}, PERMISSION_RESULT_GET_ACCOUNTS);
+        } else if (mService == null) {
+            chooseAccount();
+        } else if (mFileId == null) {
+            Async.start(() -> {
+                try {
+                    File file = new File();
+                    file.setName(mFileName);
+                    file.setMimeType("application/json");
+                    File result = mService.files().create(file).setFields("id").execute();
+                    return result.getId();
+                } catch (IOException e) {
+                    throw new RuntimeExecutionException(e);
                 }
-                hideProgressBar();
-            }
-        };
+            }).subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(mEnableBackupSubscriber);
+        }
+    }
 
-        mBackupManager.connect(callback);
+    public void importBackup() {
+        Intent mediaIntent = new Intent(Intent.ACTION_GET_CONTENT);
+        mediaIntent.addCategory(Intent.CATEGORY_OPENABLE);
+        mediaIntent.setType("*/*");
+        startActivityForResult(mediaIntent, ACTIVITY_RESULT_BACKUP_SELECTED);
+    }
+
+    public static Activity get() {
+        return sActivity;
+    }
+
+    static class FileContent extends AbstractInputStreamContent {
+        String mJson;
+
+        public FileContent(String type, String json) {
+            super(type);
+            mJson = json;
+        }
+
+        @Override
+        public InputStream getInputStream() throws IOException {
+            return new ByteArrayInputStream(mJson.getBytes());
+        }
+
+        @Override
+        public long getLength() throws IOException {
+            return mJson.getBytes().length;
+        }
+
+        @Override
+        public boolean retrySupported() {
+            return false;
+        }
     }
 
     protected void onStop() {
         super.onStop();
+        mDb.forceSave();
+
+        backup();
     }
 
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
+    private void backup() {
+        if (mFileId != null) {
+            File file = new File();
+            String fileId = mFileId;
+            FileContent content = new FileContent("application/json", PaperDatabase.toJson(mDb.getData()));
 
-        saveData(true);
+            if (mSubscription == null) {
+                mSubscription = Async.start(() -> {
+                    try {
+                        mService.files().update(fileId, file, content).execute();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return true;
+                }).subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(mSubscriber);
+            }
+        }
     }
 
-    private void saveData(boolean force) {
-        if (!force && System.currentTimeMillis() - mLastSaveTime < 5000) {
-            return;
-        }
-
-        if (hasBackupEnabled()) {
-            putBackup();
-        }
-
-        mLastSaveTime = System.currentTimeMillis();
-        Database.saveAsync(Database.getRoot(this));
-        Database.sync();
+    public void disableBackup() {
+        putPreference(PREFERENCE_FILE_ID, null);
+        mFileId = null;
     }
 }

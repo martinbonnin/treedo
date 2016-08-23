@@ -1,0 +1,79 @@
+{
+  "project_info": {
+    "project_number": "813226982659",
+    "firebase_url": "https://disco-park-763.firebaseio.com",
+    "project_id": "disco-park-763",
+    "storage_bucket": "disco-park-763.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:813226982659:android:603c2c2bd73c6659",
+        "android_client_info": {
+          "package_name": "com.mbonnin.treedo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "813226982659-5i2cr07g3gb1g5d8prpqjsel92ra8klr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mbonnin.treedo",
+            "certificate_hash": "CEC64A417634C54CE9B8AE88F59DB8D6F25D4E07"
+          }
+        },
+        {
+          "client_id": "813226982659-if960bfh9fpvu55inhjcrm1imavgkf5k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mbonnin.treedo",
+            "certificate_hash": "A3EC15A8AE1BA09A39AABE72984D26F2F333CEA9"
+          }
+        },
+        {
+          "client_id": "813226982659-6trot4719boohgkmthmicgrcns1rakik.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mbonnin.treedo",
+            "certificate_hash": "837D6CD182B1B1D9F04CA1581583C1F260E4C840"
+          }
+        },
+        {
+          "client_id": "813226982659-dcvepklvqeaqtfrrlvauncej3f1642cs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mbonnin.treedo",
+            "certificate_hash": "46AF3F32C0F99CEA294EF0734D2F730BE440BB7C"
+          }
+        },
+        {
+          "client_id": "813226982659-17mm5ka7l9fqesrsn5vt79m2j20qt1vv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaeelYQJPqv56NN5-PR8E2xXSuwbslDg8"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "813226982659-17mm5ka7l9fqesrsn5vt79m2j20qt1vv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

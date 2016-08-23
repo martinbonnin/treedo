@@ -1,19 +1,16 @@
- This is a folder
- Swipe to trash
- Long tap to edit
- Short tap to enter
-     Folders can contain subfolders...
-         ...and sub-subfolders...
-             ...and sub-sub-subfolders...
-                 Ok, you got it ! :)
-     ...or items...
+-This is a folder
+-Short tap to enter
+-    Folders can contain subfolders...
+-        ...and sub-subfolders...
+-            ...and sub-sub-subfolders...
+-                Ok, you got it ! :)
+-    ...or items...
          This is an item
          And another
 X        Items can be checked
          or not
-
          Not much else to say here
-     ...but not both at the same time
-     Check the menu for more options
-     You can send suggestions to treedo@mbonnin.net
-
+-    Check the menu for more options
+-    You can send suggestions to treedo@mbonnin.net
+-You can create folders by pressing the little folder icon
+-The pen icon allows you to move/delete items
