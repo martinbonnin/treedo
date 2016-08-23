@@ -1,39 +1,35 @@
 package com.mbonnin.treedo;
 
 import android.accounts.AccountManager;
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v4.graphics.drawable.DrawableCompat;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.view.ContextThemeWrapper;
+import android.support.v7.widget.Toolbar;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.TypedValue;
-import android.view.Display;
-import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewPropertyAnimator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.RelativeLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.google.android.gms.auth.GoogleAuthException;
@@ -44,36 +40,26 @@ import com.google.android.gms.common.AccountPicker;
 
 import com.google.android.gms.common.GooglePlayServicesUtil;
 
+import org.androidannotations.annotations.Bean;
+import org.androidannotations.annotations.EActivity;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Stack;
 
 
-public class MainActivity extends ActionBarActivity implements BackupManager.OAuthManager {
+@EActivity
+public class MainActivity extends AppCompatActivity implements BackupManager.OAuthManager {
 
-    private static final int MENU_ID_ABOUT = 0;
-    private static final int MENU_ID_ENABLE_BACKUP = 1;
-    private static final int MENU_ID_DISABLE_BACKUP = 2;
-    private static final int MENU_ID_IMPORT = 3;
-    private static final int MENU_ID_FLUSH_DATABASE = 4;
-    private static final int MENU_ID_LOGOUT = 5;
-    private static final int MENU_ID_START_REORDER = 6;
-    private static final int MENU_ID_STOP_REORDER = 7;
-
-    private static final String PREFERENCE_ENABLE_BACKUP = "enable_backup";
     private static final String PREFERENCE_OAUTH_TOKEN = "oauth_token";
     private static final String PREFERENCE_OAUTH_EMAIL = "email";
 
     public static final int REQUEST_CODE_CHOOSE_ACCOUNT = 1;
     private static final int REQUEST_CODE_RECOVER_FROM_PLAY_SERVICES_ERROR = 2;
+    private static MainActivity sActivity;
 
-    private FrameLayout mFrameLayout;
-    private Stack<ItemListView> listViewStack = new Stack<ItemListView>();
-    private android.support.v7.app.ActionBar mActionBar;
+    private ViewStack<NodeRecyclerView> mViewStack;
+    private Toolbar mToolbar;
     private BackupManager mBackupManager;
-    private FrameLayout mTopLayout;
-    private com.mbonnin.treedo.ProgressBar mProgressBar;
-    private int mShowProgressBar;
+    private LinearLayout mTopLayout;
 
     BackupManager.OAuthTokenCallback mOAuthCallback;
     private String mOAuthScope;
@@ -82,69 +68,78 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
 
     private boolean mIsDebuggable;
     private long mLastSaveTime;
-    private boolean mReordering;
+    private Drawable createFolderDrawable;
 
-    private void updateActionBar() {
-        if (listViewStack.size() > 1) {
-            mActionBar.setDisplayHomeAsUpEnabled(true);
-            mActionBar.setTitle(listViewStack.peek().getTitle());
+    @Bean
+    DB mDB;
+
+    private View.OnClickListener mNavigationClickListener = v -> onBackPressed();
+    private MenuItem.OnMenuItemClickListener mOnAboutClickListener = item -> {
+        showAboutDialog();
+        return true;
+    };
+    private MenuItem.OnMenuItemClickListener mOnNewFolderClickListener = item -> {
+        View view = LayoutInflater.from(this).inflate(R.layout.create_folder_dialog, null);
+        EditText editText = (EditText)view.findViewById(R.id.editText);
+
+        Dialog dialog = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.new_folder))
+                .setView(view)
+                .setPositiveButton(getString(R.string.ok), (dialog1, which) -> {
+                    mViewStack.peek().createFolder(editText.getText().toString());
+                    dialog1.dismiss();
+                    openSoftInput(editText);
+                }).setNegativeButton(getString(R.string.cancel), (dialog1, which) -> {
+                    dialog1.dismiss();
+                })
+                .create();
+
+        dialog.show();
+
+        return true;
+    };
+
+    private void updateToolbar() {
+        if (mViewStack.size() > 1) {
+            Drawable d = getResources().getDrawable(R.drawable.abc_ic_ab_back_mtrl_am_alpha);
+            mToolbar.setNavigationIcon(d);
+            mToolbar.setNavigationOnClickListener(mNavigationClickListener);
+            mToolbar.setTitle(mViewStack.peek().getTitle());
         } else {
-            mActionBar.setDisplayHomeAsUpEnabled(false);
-            mActionBar.setTitle(R.string.app_name);
+            mToolbar.setTitle(R.string.app_name);
+            mToolbar.setNavigationIcon(null);
+            mToolbar.setNavigationOnClickListener(null);
         }
+
+        mToolbar.setTitleTextColor(Color.WHITE);
+        Menu menu = mToolbar.getMenu();
+        int order = 0;
+
+        menu.clear();
+        MenuItem menuItem;
+
+        menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getString(R.string.new_folder));
+        menuItem.setIcon(createFolderDrawable);
+        menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        menuItem.setOnMenuItemClickListener(mOnNewFolderClickListener);
+
+        menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getString(R.string.action_about));
+        menuItem.setOnMenuItemClickListener(mOnAboutClickListener);
     }
 
-    private void pushListView(Item item, boolean animate) {
+    private void pushView(Node node) {
         long start = System.currentTimeMillis();
 
-        if (listViewStack.size() > 0) {
-            InputMethodManager imm = (InputMethodManager)getSystemService(
-                    Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(listViewStack.peek().getWindowToken(), 0);
-        }
+        mDB.save();
 
+        NodeRecyclerView listView = new NodeRecyclerView(this, node);
+        listView.setHasFixedSize(true);
 
-        ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        RelativeLayout relativeLayout = new RelativeLayout(this);
-        relativeLayout.setGravity(Gravity.BOTTOM);
+        mViewStack.pushView(listView);
 
-        // a dummy layout used to intercept the focus at startup;
-        LinearLayout dummyLayout = new LinearLayout(this);
-        dummyLayout.setFocusableInTouchMode(true);
-        relativeLayout.addView(dummyLayout, 0, 0);
+        closeSoftInput();
 
-        ItemListView listView = new ItemListView(this);
-        listView.setItem(item);
-        relativeLayout.addView(listView, layoutParams);
-
-        listView.setListener(new ItemListView.Listener() {
-            @Override
-            public void onFolderClicked(Item item) {
-                pushListView(item, true);
-            }
-        });
-        Utils.log("pushListView1() took " + (System.currentTimeMillis() - start) + " ms");
-
-        mFrameLayout.addView(relativeLayout, layoutParams);
-
-        if (animate) {
-            Display display = getWindowManager().getDefaultDisplay();
-            relativeLayout.setTranslationX(display.getWidth());
-            ViewPropertyAnimator animator = relativeLayout.animate();
-            animator.translationX(0).setDuration(300).start();
-            animator.setListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    mFrameLayout.clearFocus();
-                }
-            });
-        } else {
-            mFrameLayout.clearFocus();
-        }
-
-        listViewStack.push(listView);
-
-        updateActionBar();
+        updateToolbar();
         Utils.log("pushListView2() took " + (System.currentTimeMillis() - start) + " ms");
 
         saveData(false);
@@ -155,82 +150,61 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     }
 
     private void popListView() {
-        int count = mFrameLayout.getChildCount();
-        if (count == 1) {
+        if (mViewStack.size() == 1) {
             finish();
             return;
         }
 
-        InputMethodManager imm = (InputMethodManager)getSystemService(
-                Context.INPUT_METHOD_SERVICE);
-        imm.hideSoftInputFromWindow(listViewStack.peek().getWindowToken(), 0);
+        mViewStack.popView();
 
-        listViewStack.pop();
+        closeSoftInput();
 
-        updateActionBar();
-
-        final View relativeLayout = mFrameLayout.getChildAt(count -1);
-
-        Display display = getWindowManager().getDefaultDisplay();
-        relativeLayout.setTranslationX(0);
-        ViewPropertyAnimator animator = relativeLayout.animate();
-        animator.translationX(display.getWidth()).setDuration(300).start();
-        animator.setListener(new Animator.AnimatorListener() {
-            @Override
-            public void onAnimationStart(Animator animation) {
-
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                mFrameLayout.removeView(relativeLayout);
-            }
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-
-            }
-
-            @Override
-            public void onAnimationRepeat(Animator animation) {
-
-            }
-        });
+        updateToolbar();
 
         saveData(false);
     }
 
+    private void closeSoftInput() {
+        InputMethodManager imm = (InputMethodManager)getSystemService(
+                Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(mViewStack.peek().getWindowToken(), 0);
+    }
+
+    private void openSoftInput(View view) {
+        InputMethodManager imm = (InputMethodManager)getSystemService(
+                Context.INPUT_METHOD_SERVICE);
+        imm.showSoftInput(view, 0);
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        sActivity = this;
         mIsDebuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 
         Utils.init(getApplicationContext(), mIsDebuggable);
 
+        createFolderDrawable = getResources().getDrawable(R.drawable.ic_create_new_folder_black_24dp);
+        DrawableCompat.setTint(createFolderDrawable, Color.WHITE);
 
         mOAuthToken = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_TOKEN, "");
         mOAuthEmail = getPreferences(MODE_PRIVATE).getString(PREFERENCE_OAUTH_EMAIL, "");
         mBackupManager = new BackupManager(this, this, mOAuthToken);
 
-        mTopLayout = new FrameLayout(this);
-        mFrameLayout = new FrameLayout(this);
+        mTopLayout = new LinearLayout(this);
+        mTopLayout.setOrientation(LinearLayout.VERTICAL);
 
-        mActionBar = getSupportActionBar();
-        mActionBar.setLogo(R.drawable.treedo);
+        mToolbar = new Toolbar(new ContextThemeWrapper(this, R.style.MyToolbar));
+        mToolbar.setBackgroundColor(getResources().getColor(R.color.muted_500));
+        mTopLayout.addView(mToolbar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        mProgressBar = new com.mbonnin.treedo.ProgressBar(this);
-        mProgressBar.setVisibility(View.GONE);
+        mViewStack = new ViewStack<>(this);
+        mTopLayout.addView(mViewStack, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layoutParams.topMargin = 0;
-        mTopLayout.addView(mFrameLayout);
-        mTopLayout.addView(mProgressBar, layoutParams);
-
+        mTopLayout.setFitsSystemWindows(true);
         setContentView(mTopLayout);
 
-        Item rootItem = Database.getRoot(this);
-        pushListView(rootItem, false);
+        pushView(null);
     }
 
     @Override
@@ -238,95 +212,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         super.onConfigurationChanged(newConfig);
         setContentView(mTopLayout);
     }
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        int order = 0;
-        if (mReordering) {
-            MenuItem menuItem = menu.add(Menu.NONE, MENU_ID_STOP_REORDER, order++, getString(R.string.stop_reorder));
-            menuItem.setIcon(R.drawable.check);
-            menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-        } else {
-            SharedPreferences preferences = getPreferences(MODE_PRIVATE);
 
-            MenuItem menuItem = menu.add(Menu.NONE, MENU_ID_START_REORDER, order++, getString(R.string.reorder));
-            menuItem.setIcon(R.drawable.swap);
-            menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-
-            menu.add(Menu.NONE, MENU_ID_IMPORT, order++, getString(R.string.action_import));
-
-            if (preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false)) {
-                menu.add(Menu.NONE, MENU_ID_DISABLE_BACKUP, order++, getString(R.string.action_disable_backup));
-            } else {
-                menu.add(Menu.NONE, MENU_ID_ENABLE_BACKUP, order++, getString(R.string.action_enable_backup));
-            }
-
-            if (mIsDebuggable) {
-                menu.add(Menu.NONE, MENU_ID_FLUSH_DATABASE, order++, getString(R.string.flush_database));
-            }
-            menu.add(Menu.NONE, MENU_ID_ABOUT, order++, getString(R.string.action_about));
-
-            if (!mOAuthEmail.equals("") || !mOAuthToken.equals("")) {
-                menu.add(Menu.NONE, MENU_ID_LOGOUT, order++, getString(R.string.action_logout));
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        switch(id) {
-            case MENU_ID_ABOUT:
-                showAboutDialog();
-                return true;
-            case android.R.id.home:
-                if (listViewStack.size() > 1) {
-                    popListView();
-                }
-                return true;
-            case MENU_ID_ENABLE_BACKUP:
-                enableBackup();
-                return true;
-            case MENU_ID_DISABLE_BACKUP:
-                disableBackup();
-                return true;
-            case MENU_ID_FLUSH_DATABASE:
-                flushDatabase();
-                return true;
-            case MENU_ID_IMPORT:
-                importBackup();
-                return true;
-            case MENU_ID_LOGOUT:
-                logout();
-                return true;
-            case MENU_ID_START_REORDER:
-                startReorder();
-                return true;
-            case MENU_ID_STOP_REORDER:
-                stopReorder();
-                return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    private void startReorder() {
-        listViewStack.peek().setEditMode(true);
-
-        mActionBar.setTitle("");
-        mActionBar.setDisplayHomeAsUpEnabled(false);
-        mReordering = true;
-        invalidateOptionsMenu();
-    }
-
-    private void stopReorder() {
-        listViewStack.peek().setEditMode(false);
-
-        mActionBar.setCustomView(null);
-        updateActionBar();
-
-        mReordering = false;
-        invalidateOptionsMenu();
-    }
 
     private void logout() {
         mOAuthEmail = "";
@@ -341,17 +227,13 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         invalidateOptionsMenu();
     }
 
-    private void setRootItem(Item root) {
-        mFrameLayout.removeAllViews();
-        listViewStack.clear();
-        Database.setRoot(root, this);
-        Database.saveAsync(root);
-        pushListView(root, false);
+    private void setRootItem() {
+        mViewStack.clear();
+        pushView(null);
     }
 
     private void flushDatabase() {
-        Item item = Item.createRoot();
-        setRootItem(item);
+        setRootItem();
     }
 
     @Override
@@ -377,7 +259,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     }
 
     private void importBackup() {
-        final DialogBuilder builder = new DialogBuilder(this);
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         if (!isConnected()) {
             showBackupDialog(R.string.connection_needed, false);
@@ -387,109 +269,69 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         builder.setTitle(getString(R.string.select_backup));
         builder.setIcon(R.drawable.backup_import);
         builder.setView(getLayoutInflater().inflate(R.layout.progress_bar, null));
-        builder.setButtonLabel(getString(R.string.cancel));
-        builder.setListener(new DialogBuilder.Listener() {
-            @Override
-            public void onButtonClick() {
-
-            }
-        });
 
         final AlertDialog dialog = builder.show();
 
-        final BackupManager.BackupCallback backupCallback = new BackupManager.BackupCallback() {
-            public void onBackupDone(Item backup) {
-                if (backup != null) {
-                    setRootItem(backup);
-                } else {
-                    showBackupDialog(R.string.get_backup_failed, false);
-                }
-                hideProgressBar();
+        final BackupManager.BackupCallback backupCallback = backup -> {
+            if (backup != null) {
+                setRootItem();
+            } else {
+                showBackupDialog(R.string.get_backup_failed, false);
             }
         };
 
-        final AdapterView.OnItemClickListener clickListener = new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                BackupManager.Drive drive = (BackupManager.Drive) parent.getItemAtPosition(position);
-                showProgressBar();
+        final AdapterView.OnItemClickListener clickListener = (parent, view, position, id) -> {
+            BackupManager.Drive drive = (BackupManager.Drive) parent.getItemAtPosition(position);
 
-                mBackupManager.getBackup(drive, backupCallback);
+            mBackupManager.getBackup(drive, backupCallback);
 
-                dialog.dismiss();
-            }
+            dialog.dismiss();
         };
 
-        BackupManager.DrivesCallback callback = new BackupManager.DrivesCallback() {
-            @Override
-            public void onDrives(ArrayList<BackupManager.Drive> drives) {
-                if (drives != null) {
-                    Context context = MainActivity.this;
-                    BackupAdapter adapter = new BackupAdapter(context, drives);
-                    ListView listView = new ListView(context);
-                    listView.setAdapter(adapter);
-                    listView.setOnItemClickListener(clickListener);
-                    builder.setView(listView);
-                }
+        BackupManager.DrivesCallback callback = drives -> {
+            if (drives != null) {
+                Context context = MainActivity.this;
+                BackupAdapter adapter = new BackupAdapter(context, drives);
+                ListView listView = new ListView(context);
+                listView.setAdapter(adapter);
+                listView.setOnItemClickListener(clickListener);
+                builder.setView(listView);
             }
         };
 
         mBackupManager.getBackupList(callback);
     }
 
-    private void setBackupEnabled(boolean enabled) {
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        preferences.edit().putBoolean(PREFERENCE_ENABLE_BACKUP, enabled).apply();
-        invalidateOptionsMenu();
-    }
-
-    private boolean hasBackupEnabled() {
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
-        return preferences.getBoolean(PREFERENCE_ENABLE_BACKUP, false);
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        sActivity = null;
     }
 
     private void disableBackup() {
-        setBackupEnabled(false);
         showBackupDialog(R.string.backup_disabled_successfully, false);
     }
 
     private void showAboutDialog() {
-        DialogBuilder builder = new DialogBuilder(this);
-        ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        View view = LayoutInflater.from(this).inflate(R.layout.about_dialog, null);
 
-        builder.setTitle(getString(R.string.app_name));
-        builder.setIcon(R.drawable.treedo_blue);
-
-        ScrollView scrollView = new ScrollView(this);
-        TextView textView = new TextView(this);
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        TextView textView = ((TextView)view.findViewById(R.id.about));
         textView.setText(Html.fromHtml(getString(R.string.about)));
         textView.setMovementMethod(LinkMovementMethod.getInstance());
-        scrollView.addView(textView, layoutParams);
 
-        builder.setView(scrollView);
+        Dialog dialog = new AlertDialog.Builder(this)
+                .setIcon(getResources().getDrawable(R.drawable.treedo_blue))
+                .setTitle(getString(R.string.app_name))
+                .setView(view).setPositiveButton(getString(R.string.ok), (dialog1, which) -> {
+                    dialog1.dismiss();
+                })
+                .create();
 
-        builder.show();
+        dialog.show();
     }
-
-    public void showProgressBar() {
-        if (mShowProgressBar == 0) {
-            mProgressBar.setVisibility(View.VISIBLE);
-        }
-
-        mShowProgressBar++;
-    }
-
-    public void hideProgressBar() {
-        mShowProgressBar--;
-        if (mShowProgressBar == 0) {
-            mProgressBar.setVisibility(View.GONE);
-        }
-    }
-
 
     private void showBackupDialog(int message_id, boolean success) {
-        DialogBuilder builder = new DialogBuilder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         if (success) {
             builder.setIcon(R.drawable.backup_on);
@@ -504,6 +346,12 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
         builder.setView(textView);
 
         builder.show();
+    }
+
+    public static void pushNode(Node node) {
+        if (sActivity != null) {
+            sActivity.pushView(node);
+        }
     }
 
     public class ClearTokenTask extends AsyncTask <Void, Void, Void> {
@@ -562,7 +410,7 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
             if (mException != null) {
                 if (mException instanceof GooglePlayServicesAvailabilityException) {
                     // The Google Play services APK is old, disabled, or not present.
-                    // Show a dialog created by Google Play services that allows
+                    // Show a dialog_header created by Google Play services that allows
                     // the user to update the APK
                     int statusCode = ((GooglePlayServicesAvailabilityException)mException)
                             .getConnectionStatusCode();
@@ -649,19 +497,16 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
             return;
         }
 
-        showProgressBar();
 
         final BackupManager.ConnectCallback callback = new BackupManager.ConnectCallback() {
             @Override
             public void onConnect(boolean success) {
                 if (success) {
-                    setBackupEnabled(true);
                     showBackupDialog(R.string.backup_enabled_successfully, true);
                     putBackup();
                 } else {
                     showBackupDialog(R.string.backup_enabling_failed, false);
                 }
-                hideProgressBar();
             }
         };
 
@@ -681,10 +526,6 @@ public class MainActivity extends ActionBarActivity implements BackupManager.OAu
     private void saveData(boolean force) {
         if (!force && System.currentTimeMillis() - mLastSaveTime < 5000) {
             return;
-        }
-
-        if (hasBackupEnabled()) {
-            putBackup();
         }
 
         mLastSaveTime = System.currentTimeMillis();

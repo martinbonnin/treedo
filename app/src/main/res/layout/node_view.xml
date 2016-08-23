@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <FrameLayout
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginBottom="10dp"
+        android:layout_marginTop="10dp">
+
+        <CheckBox
+            android:id="@+id/checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+
+        <ImageView
+            android:id="@+id/folder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/folder" />
+    </FrameLayout>
+
+    <!-- we need the RelativeLayout to make the EditText occupy the whole space. Just using a
+    LinearLayout and weight:"1" is not enough... -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp">
+
+
+        <com.mbonnin.treedo.ItemEditText
+            android:id="@+id/editText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_centerInParent="true"
+            android:layout_toLeftOf="@+id/arrow"
+            android:background="@null"
+            android:inputType="textMultiLine" />
+
+        <ImageView
+            android:id="@+id/arrow"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerInParent="true"
+            android:src="@drawable/arrow" />
+    </RelativeLayout>
+</merge>

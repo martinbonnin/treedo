@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<com.mbonnin.treedo.ItemEditText xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:textCursorDrawable="@null">
-
-</com.mbonnin.treedo.ItemEditText>

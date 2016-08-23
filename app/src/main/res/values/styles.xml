@@ -1,8 +1,11 @@
 <resources>
     <style name="TreeDo"
-        parent="Theme.AppCompat.Light.DarkActionBar">
+        parent="Theme.AppCompat.Light.NoActionBar">
         <item name="colorPrimary">@color/muted_500</item>
         <item name="colorPrimaryDark">@color/muted_700</item>
         <item name="colorAccent">@color/vibrant_200</item>
+    </style>
+    <style name= "MyToolbar" parent="ThemeOverlay.AppCompat.Dark.ActionBar" >
+        <item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
     </style>
 </resources>

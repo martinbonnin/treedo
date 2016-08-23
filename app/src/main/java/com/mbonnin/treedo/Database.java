@@ -296,8 +296,4 @@ public class Database {
         database.setTransactionSuccessful();
         database.endTransaction();
     }
-
-    public static void addToTrash(Item item) {
-        sTrash.children.add(item);
-    }
 }

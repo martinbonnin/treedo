@@ -10,10 +10,11 @@
         android:icon="@drawable/treedo_launcher"
         android:logo="@drawable/treedo"
         android:label="@string/app_name"
-        android:theme="@style/TreeDo">
+        android:theme="@style/TreeDo"
+        android:name="TreeDoApplication">
 
         <activity
-            android:name="com.mbonnin.treedo.MainActivity"
+            android:name="com.mbonnin.treedo.MainActivity_"
             android:label="@string/app_name"
             android:configChanges="orientation|screenSize"
             android:windowSoftInputMode="adjustResize">

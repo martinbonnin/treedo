@@ -32,5 +32,7 @@
     <string name="or">or</string>
     <string name="items">Items</string>
     <string name="add">Add</string>
+    <string name="create_directory">New folder</string>
+    <string name="folder_name">Folder name</string>
 
 </resources>
