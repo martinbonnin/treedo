@@ -172,6 +172,7 @@ public class Item {
         if (trash == null) {
             for (Item child:children) {
                 if (child.text.equals(context.getString(R.string.trash))) {
+                    child.isTrash = true;
                     trash = child;
                     break;
                 }

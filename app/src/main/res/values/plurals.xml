@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="cut">
+        <item quantity="one">@string/oneItemCut</item>
+        <item quantity="other">@string/otherItemCut</item>
+
+    </plurals>
+    <plurals name="trash">
+        <item quantity="one">@string/oneItemTrashed</item>
+        <item quantity="other">@string/otherItemTrashed</item>
+
+    </plurals>
+    <plurals name="copy">
+        <item quantity="one">@string/oneItemCopied</item>
+        <item quantity="other">@string/otherItemCopied</item>
+
+    </plurals>
+    <plurals name="pasted">
+        <item quantity="one">@string/oneItemPasted</item>
+        <item quantity="other">@string/otherItemPasted</item>
+
+    </plurals>
+</resources>

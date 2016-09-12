@@ -86,13 +86,25 @@
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/bundles" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/classes" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/dependency-cache" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/animated-vector-drawable/23.4.0/jars" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/appcompat-v7/23.4.0/jars" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/recyclerview-v7/23.4.0/jars" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-v4/23.4.0/jars" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-vector-drawable/23.4.0/jars" />
-      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.google.android.gms/play-services/6.1.71/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/animated-vector-drawable/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/appcompat-v7/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/design/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/recyclerview-v7/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-compat/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-core-ui/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-core-utils/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-fragment/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-media-compat/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-v4/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.android.support/support-vector-drawable/24.2.0/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.google.android.gms/play-services-auth-base/9.0.2/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.google.android.gms/play-services-auth/9.0.2/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.google.android.gms/play-services-base/9.0.2/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.google.android.gms/play-services-basement/9.0.2/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.google.android.gms/play-services-tasks/9.0.2/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/com.google.firebase/firebase-common/9.0.2/jars" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/io.paperdb/paperdb/1.5/jars" />
+      <excludeFolder url="file://$MODULE_DIR$/build/intermediates/exploded-aar/io.reactivex/rxandroid/1.2.1/jars" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/incremental" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/incremental-safeguard" />
       <excludeFolder url="file://$MODULE_DIR$/build/intermediates/instant-run-support" />
@@ -108,25 +120,48 @@
       <excludeFolder url="file://$MODULE_DIR$/build/retrolambda" />
       <excludeFolder url="file://$MODULE_DIR$/build/tmp" />
     </content>
-    <orderEntry type="jdk" jdkName="Android API 23 Platform" jdkType="Android SDK" />
+    <orderEntry type="jdk" jdkName="Android API 24 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" exported="" name="androidannotations-api-4.1.0" level="project" />
-    <orderEntry type="library" exported="" name="support-annotations-23.4.0" level="project" />
-    <orderEntry type="library" exported="" name="library-1.0.18" level="project" />
-    <orderEntry type="library" exported="" name="minlog-1.3.0" level="project" />
-    <orderEntry type="library" exported="" name="kryo-serializers-0.33" level="project" />
-    <orderEntry type="library" exported="" name="gson-2.7" level="project" />
+    <orderEntry type="library" exported="" name="google-http-client-android-1.22.0" level="project" />
+    <orderEntry type="library" exported="" name="google-api-client-android-1.22.0" level="project" />
+    <orderEntry type="library" exported="" name="support-v4-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="support-compat-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="play-services-base-9.0.2" level="project" />
+    <orderEntry type="library" exported="" name="guava-jdk5-17.0" level="project" />
     <orderEntry type="library" exported="" name="asm-5.0.3" level="project" />
-    <orderEntry type="library" exported="" name="play-services-6.1.71" level="project" />
-    <orderEntry type="library" exported="" name="animated-vector-drawable-23.4.0" level="project" />
+    <orderEntry type="library" exported="" name="support-fragment-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="rxjava-async-util-0.21.0" level="project" />
+    <orderEntry type="library" exported="" name="animated-vector-drawable-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="design-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="google-oauth-client-1.22.0" level="project" />
+    <orderEntry type="library" exported="" name="reflectasm-1.10.1" level="project" />
+    <orderEntry type="library" exported="" name="jsr305-1.3.9" level="project" />
+    <orderEntry type="library" exported="" name="google-api-services-drive-v3-rev41-1.22.0" level="project" />
+    <orderEntry type="library" exported="" name="objenesis-2.1" level="project" />
+    <orderEntry type="library" exported="" name="firebase-common-9.0.2" level="project" />
+    <orderEntry type="library" exported="" name="androidannotations-api-4.1.0" level="project" />
+    <orderEntry type="library" exported="" name="support-media-compat-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="recyclerview-v7-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="play-services-auth-base-9.0.2" level="project" />
+    <orderEntry type="library" exported="" name="play-services-basement-9.0.2" level="project" />
+    <orderEntry type="library" exported="" name="google-api-client-1.22.0" level="project" />
+    <orderEntry type="library" exported="" name="support-core-ui-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="rxjava-1.1.6" level="project" />
+    <orderEntry type="library" exported="" name="support-core-utils-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="google-http-client-1.22.0" level="project" />
+    <orderEntry type="library" exported="" name="minlog-1.3.0" level="project" />
+    <orderEntry type="library" exported="" name="appcompat-v7-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="kryo-serializers-0.33" level="project" />
+    <orderEntry type="library" exported="" name="play-services-tasks-9.0.2" level="project" />
+    <orderEntry type="library" exported="" name="gson-2.7" level="project" />
+    <orderEntry type="library" exported="" name="jackson-core-2.1.3" level="project" />
+    <orderEntry type="library" exported="" name="rxandroid-1.2.1" level="project" />
+    <orderEntry type="library" exported="" name="support-annotations-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="google-http-client-jackson2-1.22.0" level="project" />
+    <orderEntry type="library" exported="" name="support-vector-drawable-24.2.0" level="project" />
+    <orderEntry type="library" exported="" name="play-services-auth-9.0.2" level="project" />
     <orderEntry type="library" exported="" name="protobuf-java-2.6.1" level="project" />
     <orderEntry type="library" exported="" name="kryo-3.0.2" level="project" />
-    <orderEntry type="library" exported="" name="reflectasm-1.10.1" level="project" />
-    <orderEntry type="library" exported="" name="support-v4-23.4.0" level="project" />
-    <orderEntry type="library" exported="" name="recyclerview-v7-23.4.0" level="project" />
-    <orderEntry type="library" exported="" name="support-vector-drawable-23.4.0" level="project" />
     <orderEntry type="library" exported="" name="paperdb-1.5" level="project" />
-    <orderEntry type="library" exported="" name="objenesis-2.1" level="project" />
-    <orderEntry type="library" exported="" name="appcompat-v7-23.4.0" level="project" />
   </component>
 </module>

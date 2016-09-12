@@ -1,6 +1,8 @@
 package com.mbonnin.treedo;
 
 import android.content.Context;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.AppCompatEditText;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -13,7 +15,7 @@ import android.widget.EditText;
 /**
  * Created by martin on 06/10/14.
  */
-public class ItemEditText extends EditText {
+public class ItemEditText extends AppCompatEditText {
     private Listener mListener;
     private boolean mEditable;
 

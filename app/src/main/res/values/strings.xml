@@ -15,7 +15,7 @@
     <string name="backup_enabled_successfully">Setup successful. Your notes will be backed up at regular intervals.<p>You can check the backups in your google drive account.</p></string>
     <string name="backup_disabled_successfully">Automatic backups have been disabled.</string>
     <string name="ok">OK</string>
-    <string name="about"><![CDATA[<p>Tree-Do, The hierarchical todo list app for control freaks.</p><p>Author: Martin Bonnin.<br><a href="http://mbonnin.net">http://mbonnin.net</a></p><p>Tree-Do name by Patou.</p><p>Tree logo derived from Tree by <a href="http://www.thenounproject.com/hy.drogu">Hysen Drogu</a> from the <a href="http://www.thenounproject.com">Noun Project</a>.</p>]]></string>
+    <string name="about"><![CDATA[<p>TreeDo, The hierarchical todo list app for control freaks.</p><p>Author: Martin Bonnin.<br><a href="http://mbonnin.net">http://mbonnin.net</a></p><p>Tree-Do name by Patou.</p><p>Tree logo derived from Tree by <a href="http://www.thenounproject.com/hy.drogu">Hysen Drogu</a>.</p>]]></string>
     <string name="select_backup">Select backup</string>
     <string name="cancel">Cancel</string>
     <string name="backup_enabling_failed">Could not enable automatic backups.</string>
@@ -34,5 +34,28 @@
     <string name="add">Add</string>
     <string name="create_directory">New folder</string>
     <string name="folder_name">Folder name</string>
+    <string name="edit">Edit</string>
+    <string name="oneItemCut">%d item cut</string>
+    <string name="otherItemCut">%d items cut</string>
+    <string name="oneItemTrashed">%d item moved to trash</string>
+    <string name="otherItemTrashed">%d items moved to trash</string>
+    <string name="oneItemCopied">%d item copied to clipboard</string>
+    <string name="otherItemCopied">%d items copied to clipboard</string>
+    <string name="oneItemPasted">%d item pasted</string>
+    <string name="otherItemPasted">%d items pasted</string>
+    <string name="cut">cut</string>
+    <string name="copy">copy</string>
+    <string name="paste">paste</string>
+    <string name="nothingToPaste">nothing to paste</string>
+    <string name="rename_folder">Rename Folder</string>
+    <string name="open_trash">Open trash</string>
+    <string name="need_google_play_services">You need google play services to enable backup</string>
+    <string name="permission_needed">You need to grant the ACCOUNTS permissions to enable backup</string>
+    <string name="backup_enabled">Backup has been enabled successfully</string>
+    <string name="beer">Beer</string>
+    <string name="cannot_open_backup">Impossible to open backup</string>
+    <string name="backup_found">Backup found</string>
+    <string name="do_you_want_to_replace">Do you want to import this backup ? It will replace all you existing notes.</string>
+    <string name="empty_trash">Empty trash</string>
 
 </resources>

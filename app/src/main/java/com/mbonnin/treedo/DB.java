@@ -1,87 +1,99 @@
 package com.mbonnin.treedo;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
+import android.os.Handler;
+import android.util.Log;
+
 
 import org.androidannotations.annotations.EBean;
-import org.json.JSONObject;
-
-import java.lang.reflect.Type;
 
 import io.paperdb.Paper;
 
 
 @EBean(scope = EBean.Scope.Singleton)
 public class DB {
+    private static final String TAG = "DB";
 
-    private static final java.lang.String KEY_ROOT = "root";
-    private static final java.lang.String KEY_TRASH = "trash";
+    private static final java.lang.String KEY_DATA = "data";
+    private final Handler mHandler;
 
-    Gson gson;
-    public Node root;
-    public Node trash;
+    private long lastTime;
+
+    public void setData(Data data) {
+        if (data == null) {
+            data = new Data();
+        }
+
+        if (data.root == null) {
+            data.root = new Node();
+        }
+
+        data.root.folder = true;
+        data.root.text = "Treedo";
+
+        if (data.trash == null) {
+            data.trash = new Node();
+        }
+
+        data.trash.text = "Trash";
+        data.trash.trash = true;
+        data.trash.folder = true;
+
+
+        walk(data.root);
+        walk(data.trash);
+
+        this.mData = data;
+    }
+
+    public static class Data {
+        public Node root;
+        public Node trash;
+    }
+
+    Data mData;
 
     public DB() {
-        gson = new Gson();
+        mHandler = new Handler();
 
-        String str = Paper.book().read(KEY_ROOT);
-        if (str != null) {
-            root = gson.fromJson(str, Node.class);
-        }
-        if (root == null) {
-            root = new Node();
-        }
+        mData = Paper.book().read(KEY_DATA);
 
-        if (!root.folder) {
-            root.folder = true;
-        }
-
-        str = Paper.book().read(KEY_TRASH);
-        if (str != null) {
-            trash = gson.fromJson(str, Node.class);
-        }
-        if (trash == null) {
-            trash = new Node();
-        }
-
-        trash.text = "Trash";
-
-        if (!trash.folder) {
-            trash.folder = true;
-        }
-
-        walk(root);
-        walk(trash);
-        trash.trash = true;
+        setData(mData);
     }
 
     private void walk(Node node) {
         if (node.text == null) {
             node.text = "";
         }
-        for (Node child: node.childList) {
+        for (Node child : node.childList) {
             child.parent = node;
             walk(child);
         }
     }
 
     public Node getRoot() {
-        return root;
+        return mData.root;
     }
 
     public Node getTrash() {
-        return trash;
+        return mData.trash;
     }
 
     public void save() {
-        Paper.book().write(KEY_ROOT, gson.toJson(root));
-        Paper.book().write(KEY_TRASH, gson.toJson(trash));
+        if (System.currentTimeMillis() - lastTime < 5000) {
+            mHandler.postDelayed(() -> save(), 5000);
+        } else {
+            forceSave();
+        }
     }
 
 
+    public void forceSave() {
+        Log.d(TAG, "saving...");
+        Paper.book().write(KEY_DATA, mData);
+        lastTime = System.currentTimeMillis();
+    }
+
+    public Data getData() {
+        return mData;
+    }
 }

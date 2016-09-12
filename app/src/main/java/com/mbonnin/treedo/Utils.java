@@ -82,22 +82,4 @@ public class Utils {
         }
         return result + string.substring(i);
     }
-
-    public static int getCheckBoxHeight() {
-        return mCheckBoxHeight;
-    }
-
-    public static Bitmap getBitmap(Context context, int id) {
-        Bitmap b = sCachedBitmaps.get(id);
-        if (b == null) {
-            Resources resources = context.getResources();
-            b = BitmapFactory.decodeResource(resources, id);
-            sCachedBitmaps.put(id, b);
-        }
-        return b;
-    }
-
-    static public boolean hasLollipopApi() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;
-    }
 }
