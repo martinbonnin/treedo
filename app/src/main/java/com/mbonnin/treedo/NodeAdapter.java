@@ -3,6 +3,7 @@ package com.mbonnin.treedo;
 import android.content.Context;
 import android.graphics.Color;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +25,7 @@ import static android.view.View.VISIBLE;
 @EBean
 public class NodeAdapter extends RecyclerView.Adapter {
     private final Context mContext;
+    private static final String TAG = "NodeAdapter";
     private HandleClickListener mHandleClickedListener;
     private boolean mInTrash;
     private Node mParent;
@@ -59,7 +61,7 @@ public class NodeAdapter extends RecyclerView.Adapter {
     }
 
     @Bean
-    DB mDb;
+    PaperDatabase mDb;
 
     private ArrayList<Node> mList = new ArrayList<>();
 
@@ -164,7 +166,7 @@ public class NodeAdapter extends RecyclerView.Adapter {
         notifyDataSetChanged();
     }
 
-    class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, ItemEditText.Listener, CompoundButton.OnCheckedChangeListener {
+    class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, MyEditText.Listener, CompoundButton.OnCheckedChangeListener {
         private Node mNode;
 
         public ViewHolder(View itemView) {
@@ -182,10 +184,12 @@ public class NodeAdapter extends RecyclerView.Adapter {
 
             nodeView.setOnClickListener(null);
 
-            if (mEditMode && mSelectedItems[getAdapterPosition()]) {
-                nodeView.setBackgroundColor(nodeView.getContext().getResources().getColor(R.color.vibrant_50));
-            } else {
-                nodeView.setBackgroundColor(Color.TRANSPARENT);
+            if (mEditMode) {
+                if (mSelectedItems[getAdapterPosition()]) {
+                    nodeView.setBackgroundColor(nodeView.getContext().getResources().getColor(R.color.vibrant_50));
+                } else {
+                    nodeView.setBackgroundColor(Color.TRANSPARENT);
+                }
             }
 
             nodeView.checkbox.setVisibility(node.folder || isNew ? GONE : VISIBLE);
@@ -213,7 +217,22 @@ public class NodeAdapter extends RecyclerView.Adapter {
             nodeView.arrow.setVisibility((node.folder || mEditMode) ? VISIBLE : GONE);
             nodeView.arrow.setImageResource(mEditMode ? R.drawable.handle : R.drawable.arrow);
 
-            nodeView.setOnClickListener(node.folder || mEditMode ? this : null);
+            nodeView.setOnClickListener(mEditMode ? this : null);
+
+            nodeView.setOnTouchListener((v, event) -> {
+                if (mNode.folder) {
+                    if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                        v.setBackgroundColor(Color.LTGRAY);
+                    } else if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                        Log.d("timing", "pushNodeG: " + System.currentTimeMillis());
+                        MainActivity.pushNodeG(mNode);
+                        nodeView.setBackgroundColor(Color.TRANSPARENT);
+                    } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                        nodeView.setBackgroundColor(Color.TRANSPARENT);
+                    }
+                }
+                return false;
+            });
 
             nodeView.checkbox.setOnCheckedChangeListener(this);
             nodeView.arrow.setOnTouchListener((v, event) -> {
@@ -313,7 +332,6 @@ public class NodeAdapter extends RecyclerView.Adapter {
                     mSelectionListener.selectionChanged(count);
                 }
             } else {
-                MainActivity.pushNodeG(mNode);
             }
         }
 

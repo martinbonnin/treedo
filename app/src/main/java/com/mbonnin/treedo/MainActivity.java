@@ -2,6 +2,7 @@ package com.mbonnin.treedo;
 
 import android.Manifest;
 import android.accounts.AccountManager;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
@@ -14,6 +15,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -22,10 +24,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
-import android.support.design.widget.Snackbar;
 
 import com.example.android.trivialdrivesample.util.IabHelper;
-
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.tasks.RuntimeExecutionException;
@@ -41,17 +41,14 @@ import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
-import com.google.gson.Gson;
 
 import org.androidannotations.annotations.Bean;
 import org.androidannotations.annotations.EActivity;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Stack;
 import java.util.UUID;
 
@@ -70,10 +67,11 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFERENCE_UUID = "uuid";
     public static final String PREFERENCE_FILE_ID = "file_id";
 
-    private static final int ACTIVITY_RESULT_ACCOUNT_CHOSEN = 1;
-    private static final int ACTIVITY_RESULT_GOOGLE_PLAY_SERVICES = 2;
-    private static final int ACTIVITY_RESULT_OAUTH_GRANTED = 3;
-    private static final int ACTIVITY_RESULT_BACKUP_SELECTED = 4;
+    public static final int ACTIVITY_RESULT_ACCOUNT_CHOSEN = 1;
+    public static final int ACTIVITY_RESULT_GOOGLE_PLAY_SERVICES = 2;
+    public static final int ACTIVITY_RESULT_OAUTH_GRANTED = 3;
+    public static final int ACTIVITY_RESULT_BACKUP_SELECTED = 4;
+    public static final int ACTIVITY_RESULT_IAB_FINISHED = 5;
 
     private static final int PERMISSION_RESULT_GET_ACCOUNTS = 1;
 
@@ -88,17 +86,15 @@ public class MainActivity extends AppCompatActivity {
      */
     private Stack<MainView> mStack = new Stack();
 
-    private boolean mIsDebuggable;
-
     @Bean
-    DB mDb;
-    private IabHelper mHelper;
+    PaperDatabase mDb;
     private GoogleAccountCredential mCredential;
     private Drive mService;
     private String mFileName;
     private String mFileId;
     private Subscription mSubscription;
-    Gson gson;
+    @Bean
+    InAppBilling mInAppBilling;
 
     private Observer<? super Boolean> mSubscriber = new Observer<Boolean>() {
         @Override
@@ -119,6 +115,8 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "backup success");
         }
     };
+    @Bean
+    FirebaseUtils mFirebaseUtils;
 
     private void handleDriveException(Throwable e) {
         if (e instanceof RuntimeException) {
@@ -134,11 +132,12 @@ public class MainActivity extends AppCompatActivity {
     private void setView(MainView view, int animate) {
         long start = System.currentTimeMillis();
 
-        mDb.save();
         backup();
 
+        mFirebaseUtils.logScreen();
         mAnimatedFrameLayout.setView(view, animate);
 
+        Log.d("timing", "closeInpu: " + System.currentTimeMillis());
         closeSoftInput();
 
         Utils.log("setView took " + (System.currentTimeMillis() - start) + " ms");
@@ -183,12 +182,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        gson = new Gson();
-
         sActivity = this;
-        mIsDebuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-
-        Utils.init(getApplicationContext(), mIsDebuggable);
 
         mAnimatedFrameLayout = new AnimatedFrameLayout<>(this);
 
@@ -200,18 +194,6 @@ public class MainActivity extends AppCompatActivity {
             putPreference(PREFERENCE_UUID, uuid);
         }
         mFileName = "TreeDo_" + uuid;
-
-        String base64EncodedPublicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjOQf9scJlfaEtp79eWVyQdLw6bqFiIXHvAjXvY+YdKpzvQFwSC0N72KgbAX9u6K5B2btAEziO3PPouubgN3426Ay00DWdjNUiGrpBhQ1Wzq4/+ZkwhPM3LKp6aH3y8B6oalnY9BeKWIBvzkPOxzuqoqghm2WSO/Al3K7bpcGQZkcHQO8g66e0PmTYOR3v5z7hIk16fqD77Raac8DhfY+0903e4ePsjok09OjJOJ7v3vgjCYpwnwn/apcCysEhSZk9fRw05R5du0VDWLFEHWYyCeTnV5c5Zx5JgWddbLnsb3Mnwlki14bpdUzYV2WgxcUvySJIFtNMF9m8t5nCzdoOwIDAQAB";
-
-        mHelper = new IabHelper(this, base64EncodedPublicKey);
-        mHelper.startSetup(result -> {
-            if (!result.isSuccess()) {
-                // Oh no, there was a problem.
-                Log.d(TAG, "Problem setting up In-app Billing: " + result);
-            } else {
-                Log.d(TAG, "Hooray, IAB is fully set up ");
-            }
-        });
 
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
@@ -237,14 +219,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mHelper != null) {
-            try {
-                mHelper.dispose();
-            } catch (IabHelper.IabAsyncInProgressException e) {
-                e.printStackTrace();
-            }
-        }
-        mHelper = null;
+
+        mInAppBilling.release();
         sActivity = null;
     }
 
@@ -274,9 +250,11 @@ public class MainActivity extends AppCompatActivity {
 
     public void pushNode(Node node, int animate) {
         MainView view = MainView_.build(this);
+        Log.d("timing", "setNode  : " + System.currentTimeMillis());
         view.setNode(this, node);
         mStack.push(view);
 
+        Log.d("timing", "setView  : " + System.currentTimeMillis());
         setView(view, animate);
     }
 
@@ -319,60 +297,37 @@ public class MainActivity extends AppCompatActivity {
                     openBackup(data.getData());
                 }
                 break;
+            case ACTIVITY_RESULT_IAB_FINISHED:
+                mInAppBilling.getHelper().handleActivityResult(requestCode, resultCode, data);
+                break;
 
         }
     }
 
-    public String readFullyAsString(InputStream inputStream, String encoding)
-            throws IOException {
-        return readFully(inputStream).toString(encoding);
-    }
+    private void openBackup(Uri uri) {
+        PaperDatabase.Data data = null;
 
-    public byte[] readFullyAsBytes(InputStream inputStream)
-            throws IOException {
-        return readFully(inputStream).toByteArray();
-    }
-
-    private ByteArrayOutputStream readFully(InputStream inputStream)
-            throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
-        int length = 0;
-        while ((length = inputStream.read(buffer)) != -1) {
-            baos.write(buffer, 0, length);
-        }
-        return baos;
-    }
-
-    private DB.Data openLegacyBackup(Uri uri) {
         InputStream inputStream = null;
         try {
             inputStream = getContentResolver().openInputStream(uri);
-            Item item = Item.deserialize(inputStream);
-            item.findOrCreateTrash(this);
-
-            Node root = toNode(item);
-            Node trash = null;
-            Iterator<Node> iterator = root.childList.iterator();
-            while (iterator.hasNext()) {
-                Node child = iterator.next();
-                if (child.trash) {
-                    trash = child;
-                    iterator.remove();
-                    break;
-                }
-            }
-            if (trash != null) {
-                DB.Data data = new DB.Data();
-                data.root = root;
-                data.trash = trash;
-                return data;
-            }
+            data = PaperDatabase.fromJson(inputStream);
         } catch (Exception e) {
             e.printStackTrace();
-            snackBar(getString(R.string.cannot_open_backup));
         } finally {
-            if (inputStream != null) {
+            try {
+                inputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (data == null) {
+            try {
+                inputStream = getContentResolver().openInputStream(uri);
+                data = PaperDatabase.fromHumanFormat(inputStream);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
                 try {
                     inputStream.close();
                 } catch (IOException e) {
@@ -380,58 +335,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-        return null;
-    }
-
-    static private Node toNode(Item item) {
-        Node node = new Node();
-        node.folder = item.isAFolder;
-        node.checked = item.checked;
-        node.text = item.text;
-        node.trash = item.isTrash;
-
-        for (Item childItem: item.children) {
-            node.childList.add(toNode(childItem));
-        }
-        return node;
-    }
-
-    private DB.Data openJsonBackup(Uri uri) {
-        InputStream inputStream = null;
-        String s;
-        try {
-            inputStream = getContentResolver().openInputStream(uri);
-            s = readFullyAsString(inputStream, "UTF-8");
-            DB.Data data = gson.fromJson(s, DB.Data.class);
-            if (data != null && data.root != null && data.trash != null) {
-                return data;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return null;
-    }
-
-    private void openBackup(Uri uri) {
-        DB.Data data = openJsonBackup(uri);
-        if (data == null) {
-            data = openLegacyBackup(uri);
-        }
 
         if (data == null || data.root == null || data.trash == null) {
             snackBar(getString(R.string.cannot_open_backup));
             return;
         }
 
-        DB.Data finalData = data;
+        PaperDatabase.Data finalData = data;
         Dialog dialog = new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.backup_found))
                 .setMessage(R.string.do_you_want_to_replace)
@@ -576,6 +486,10 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(mediaIntent, ACTIVITY_RESULT_BACKUP_SELECTED);
     }
 
+    public static Activity get() {
+        return sActivity;
+    }
+
     static class FileContent extends AbstractInputStreamContent {
         String mJson;
 
@@ -611,7 +525,7 @@ public class MainActivity extends AppCompatActivity {
         if (mFileId != null) {
             File file = new File();
             String fileId = mFileId;
-            FileContent content = new FileContent("application/json", gson.toJson(mDb.getData()));
+            FileContent content = new FileContent("application/json", PaperDatabase.toJson(mDb.getData()));
 
             if (mSubscription == null) {
                 mSubscription = Async.start(() -> {

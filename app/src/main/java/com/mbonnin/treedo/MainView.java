@@ -16,7 +16,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.inputmethod.InputConnectionWrapper;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
@@ -47,8 +46,10 @@ public class MainView extends LinearLayout {
     @Bean
     Clipboard clipboard;
     @Bean
-    DB mDb;
+    PaperDatabase mDb;
     private ItemTouchHelper mItemTouchHelper;
+    @Bean
+    InAppBilling mInAppBilling;
 
     public MainView(Context context) {
         super(context);
@@ -260,7 +261,10 @@ public class MainView extends LinearLayout {
         menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.beer));
         menuItem.setIcon(beerDrawable);
         menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-        menuItem.setOnMenuItemClickListener(item -> true);
+        menuItem.setOnMenuItemClickListener(item -> {
+            mInAppBilling.displayDialog(getContext());
+            return true;
+        });
 
         if (mParent.getRoot() != mDb.getTrash()) {
             menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.new_folder));

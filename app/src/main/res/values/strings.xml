@@ -54,8 +54,12 @@
     <string name="backup_enabled">Backup has been enabled successfully</string>
     <string name="beer">Beer</string>
     <string name="cannot_open_backup">Impossible to open backup</string>
-    <string name="backup_found">Backup found</string>
+    <string name="backup_found">Import Backup ?</string>
     <string name="do_you_want_to_replace">Do you want to import this backup ? It will replace all your existing notes.</string>
     <string name="empty_trash">Empty trash</string>
+    <string name="thank_you">Thank You !</string>
+    <string name="buy_beer">Buy me a beer</string>
+    <string name="buy_growler">Buy me a growler</string>
+    <string name="buy_keg">Buy me a keg</string>
 
 </resources>

@@ -9,6 +9,7 @@ android {
             keyPassword 'password'
             storeFile file('keystore.jks')
             storePassword 'password'
+            // sha1: 46:AF:3F:32:C0:F9:9C:EA:29:4E:F0:73:4D:2F:73:0B:E4:40:BB:7C
         }
     }
     compileSdkVersion 24
@@ -18,8 +19,9 @@ android {
         applicationId "com.mbonnin.treedo"
         minSdkVersion 14
         targetSdkVersion 24
-        versionCode 103
-        versionName "103"
+        versionCode 105
+        versionName "105"
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -71,7 +73,6 @@ dependencies {
     apt "org.androidannotations:androidannotations:$AAVersion"
     compile "org.androidannotations:androidannotations-api:$AAVersion"
 
-    compile 'com.google.android.gms:play-services-auth:9.0.2'
     compile('com.google.api-client:google-api-client-android:1.22.0') {
         exclude group: 'org.apache.httpcomponents'
     }
@@ -82,4 +83,10 @@ dependencies {
     compile 'io.reactivex:rxjava:1.1.6'
     compile 'io.reactivex:rxjava-async-util:0.21.0'
     compile 'io.reactivex:rxandroid:1.2.1'
+
+    compile 'com.google.android.gms:play-services-auth:9.4.0'
+    compile 'com.google.firebase:firebase-core:9.4.0'
+    compile 'com.android.support:multidex:1.0.0'
 }
+
+apply plugin: 'com.google.gms.google-services'

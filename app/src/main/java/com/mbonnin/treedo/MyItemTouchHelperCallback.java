@@ -3,9 +3,6 @@ package com.mbonnin.treedo;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 
-import static android.support.v7.widget.helper.ItemTouchHelper.RIGHT;
-import static android.support.v7.widget.helper.ItemTouchHelper.UP;
-
 /**
  * Created by martin on 9/12/16.
  */

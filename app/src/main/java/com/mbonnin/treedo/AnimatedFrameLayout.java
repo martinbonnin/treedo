@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +15,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 
 public class AnimatedFrameLayout<T extends View> extends FrameLayout implements ValueAnimator.AnimatorUpdateListener {
+    private static final String TAG = "AnimatedFrameLayout";
     public static final int ANIMATE_NONE = 0;
     public static final int ANIMATE_ENTER = 1;
     public static final int ANIMATE_EXIT = 2;
@@ -21,8 +23,6 @@ public class AnimatedFrameLayout<T extends View> extends FrameLayout implements 
     private final Paint mPaint;
     ValueAnimator animator = new ValueAnimator();
     ImageView imageView;
-    private int mWidth;
-    private int mHeight;
     private Bitmap mBitmap;
     private Canvas mCanvas;
     private float mEndValue;
@@ -57,6 +57,11 @@ public class AnimatedFrameLayout<T extends View> extends FrameLayout implements 
         View view = getChildAt(getChildCount() - 1);
 
         view.setTranslationX(value);
+        if (value == mStartValue) {
+            Log.d("timing", "animStart: " + System.currentTimeMillis());
+        } else if (value == mEndValue) {
+            Log.d("timing", "animEnd  : " + System.currentTimeMillis());
+        }
     }
 
     @Override
@@ -71,10 +76,9 @@ public class AnimatedFrameLayout<T extends View> extends FrameLayout implements 
         int height = getHeight();
 
         if (width > 0 && height > 0) {
+            long start = System.currentTimeMillis();
             Bitmap newBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             mCanvas = new Canvas(newBitmap);
-            mWidth = width;
-            mHeight = height;
 
             /**
              * we might be partially transparent so we need to clear the canvas first
@@ -86,13 +90,14 @@ public class AnimatedFrameLayout<T extends View> extends FrameLayout implements 
                 mBitmap.recycle();
             }
             mBitmap = newBitmap;
+            Log.d(TAG, "Bitmap draw took " + (System.currentTimeMillis() - start));
         } else {
             /**
              * nothing to draw...
              */
             if (mBitmap != null) {
-                mBitmap = null;
                 mBitmap.recycle();
+                mBitmap = null;
             }
         }
 

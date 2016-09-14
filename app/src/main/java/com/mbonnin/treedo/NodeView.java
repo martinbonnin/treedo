@@ -6,11 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.Gravity;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
@@ -29,7 +25,7 @@ public class NodeView extends LinearLayout {
     @ViewById
     ImageView folder;
     @ViewById
-    ItemEditText editText;
+    MyEditText editText;
     @ViewById
     ImageView arrow;
     private Paint mPaint;

@@ -1,7 +1,6 @@
 package com.mbonnin.treedo;
 
 import android.content.Context;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.AppCompatEditText;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -10,12 +9,11 @@ import android.view.MotionEvent;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputConnectionWrapper;
-import android.widget.EditText;
 
 /**
  * Created by martin on 06/10/14.
  */
-public class ItemEditText extends AppCompatEditText {
+public class MyEditText extends AppCompatEditText {
     private Listener mListener;
     private boolean mEditable;
 
@@ -41,15 +39,15 @@ public class ItemEditText extends AppCompatEditText {
         mListener = listener;
     }
 
-    public ItemEditText(Context context) {
+    public MyEditText(Context context) {
         super(context);
     }
 
-    public ItemEditText(Context context, AttributeSet attrs) {
+    public MyEditText(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
-    public ItemEditText(Context context, AttributeSet attrs, int defStyle) {
+    public MyEditText(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
     }
 

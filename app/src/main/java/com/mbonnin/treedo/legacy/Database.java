@@ -1,4 +1,4 @@
-package com.mbonnin.treedo;
+package com.mbonnin.treedo.legacy;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -9,8 +9,9 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 
-import java.io.IOException;
-import java.io.InputStream;
+import com.mbonnin.treedo.Utils;
+
+import java.io.File;
 import java.util.ArrayList;
 
 /**
@@ -31,14 +32,11 @@ public class Database {
     public static final int ID_TRASH = 1;
     public static final int ID_FIRST_USABLE = 2;
 
+    public static final String DATABASE_NAME = "list.db";
+
     private static Item sRoot;
-    private static Item sTrash;
     private static SQLiteDatabase sDatabase;
     private static int sID;
-    private static WorkerThread sThread;
-
-    private static final int MESSAGE_SAVE = 1;
-    private static final int MESSAGE_SYNC = 2;
 
     private static final String SQL_CREATE_TABLE =
             "CREATE TABLE " + TABLE_NAME + " (" +
@@ -62,37 +60,10 @@ public class Database {
         }
     }
 
-    public static void setRoot(Item root, Context context) {
-        sTrash = root.findOrCreateTrash(context);
-        sRoot = root;
-    }
-
-    public static void sync() {
-        if (sThread != null) {
-            boolean continueWaiting = true;
-            synchronized (sDatabase) {
-                sendMessage(MESSAGE_SYNC, null);
-                while (continueWaiting) {
-                    try {
-                        sDatabase.wait();
-                        continueWaiting = false;
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            Utils.log("Database thread synced");
-        }
-    }
-
-    public static void removeFromTrash(Item item) {
-        sTrash.children.remove(item);
-    }
 
     static class ItemDatabaseOpenHelper extends SQLiteOpenHelper {
         // If you change the database schema, you must increment the database version.
         public static final int DATABASE_VERSION = 1;
-        public static final String DATABASE_NAME = "list.db";
         private Context mContext;
 
         public ItemDatabaseOpenHelper(Context context) {
@@ -103,14 +74,6 @@ public class Database {
         @Override
         public void onCreate(SQLiteDatabase sqLiteDatabase) {
             sqLiteDatabase.execSQL(SQL_CREATE_TABLE);
-
-            InputStream inputStream = mContext.getResources().openRawResource(R.raw.tutorial);
-            try {
-                Item root = Item.deserialize(inputStream);
-                save(sqLiteDatabase, root);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
 
         @Override
@@ -119,8 +82,13 @@ public class Database {
         }
     }
 
-    static Item getRoot(Context context) {
+    static public Item getRoot(Context context) {
         if (sDatabase == null) {
+            File dbFile = context.getDatabasePath(DATABASE_NAME);
+            if (!dbFile.exists()) {
+                return null;
+            }
+
             ItemDatabaseOpenHelper helper = new ItemDatabaseOpenHelper(context);
             sDatabase = helper.getWritableDatabase();
 
@@ -206,7 +174,6 @@ public class Database {
                     Utils.log("Oopps, root item is not a directory");
                 }
             }
-            sTrash = sRoot.findOrCreateTrash(context);
         }
 
         return sRoot;
@@ -232,68 +199,5 @@ public class Database {
         database.insert(TABLE_NAME, null, values);
 
         return id;
-    }
-
-    static class WorkerThread extends HandlerThread {
-        public Handler mHandler;
-
-        public WorkerThread(String name) {
-            super(name);
-        }
-
-        public synchronized void waitUntilReady() {
-            mHandler = new Handler(getLooper(), new Handler.Callback() {
-                public boolean handleMessage(Message msg) {
-                    switch (msg.what) {
-                        case MESSAGE_SAVE:
-                            save(sDatabase, (Item) msg.obj);
-                            break;
-                        case MESSAGE_SYNC:
-                            synchronized (sDatabase) {
-                                sDatabase.notifyAll();
-                            }
-                            break;
-                    }
-
-                    return true;
-                }
-            });
-        }
-    }
-
-    private static void sendMessage(int what, Object param) {
-        if (sThread == null) {
-            sThread = new WorkerThread("database worker");
-            sThread.start();
-            // wait for the thread to start;
-            sThread.waitUntilReady();
-        }
-
-        Message message = sThread.mHandler.obtainMessage(what, param);
-        sThread.mHandler.sendMessage(message);
-    }
-
-    static void saveAsync(Item item) {
-        // we do a copy first as item are accessed from 2 threads
-        Item clone = item.deepCopy(Integer.MAX_VALUE);
-
-        sendMessage(MESSAGE_SAVE, clone);
-    }
-
-    private static void add(SQLiteDatabase database, Item item, int parentId, int order) {
-        int id = insertItem(database, item, parentId, order);
-        for (int i = 0; i < item.children.size(); i++) {
-            Item item2 = item.children.get(i);
-            add(database, item2, id, i);
-        }
-    }
-
-    private static void save(SQLiteDatabase database, Item item) {
-        database.beginTransaction();
-        database.delete(TABLE_NAME, null, null);
-        sID = ID_FIRST_USABLE;
-        add(database, item, ID_NONE, 0);
-        database.setTransactionSuccessful();
-        database.endTransaction();
     }
 }
