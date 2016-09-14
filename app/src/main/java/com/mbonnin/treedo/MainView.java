@@ -362,7 +362,8 @@ public class MainView extends LinearLayout {
         menuItem.setOnMenuItemClickListener(mOnPasteClickListener);
     }
 
-    public void refreshTitle() {
+    public void refresh() {
         toolbar.setTitle(mParent.text);
+        mNodeAdapter.notifyDataSetChanged();
     }
 }

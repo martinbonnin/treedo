@@ -55,7 +55,7 @@
     <string name="beer">Beer</string>
     <string name="cannot_open_backup">Impossible to open backup</string>
     <string name="backup_found">Backup found</string>
-    <string name="do_you_want_to_replace">Do you want to import this backup ? It will replace all you existing notes.</string>
+    <string name="do_you_want_to_replace">Do you want to import this backup ? It will replace all your existing notes.</string>
     <string name="empty_trash">Empty trash</string>
 
 </resources>

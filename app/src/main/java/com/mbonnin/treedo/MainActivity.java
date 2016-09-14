@@ -155,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
         }
         mStack.pop();
 
-        mStack.peek().refreshTitle();
+        mStack.peek().refresh();
         setView(mStack.peek(), AnimatedFrameLayout.ANIMATE_EXIT);
     }
 
@@ -315,7 +315,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             case ACTIVITY_RESULT_BACKUP_SELECTED:
-                openBackup(data.getData());
+                if (data != null) {
+                    openBackup(data.getData());
+                }
                 break;
 
         }

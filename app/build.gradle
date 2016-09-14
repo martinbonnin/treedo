@@ -7,7 +7,7 @@ android {
         mbonnin {
             keyAlias 'mbonnin'
             keyPassword 'password'
-            storeFile file('/home/martin/android/keystore/keystore.jks')
+            storeFile file('keystore.jks')
             storePassword 'password'
         }
     }
@@ -18,12 +18,17 @@ android {
         applicationId "com.mbonnin.treedo"
         minSdkVersion 14
         targetSdkVersion 24
-        versionCode 102
-        versionName "102"
+        versionCode 103
+        versionName "103"
     }
 
     buildTypes {
         release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.mbonnin
+        }
+        debug {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.mbonnin
