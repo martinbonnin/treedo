@@ -19,8 +19,8 @@ android {
         applicationId "com.mbonnin.treedo"
         minSdkVersion 14
         targetSdkVersion 24
-        versionCode 105
-        versionName "105"
+        versionCode 106
+        versionName "106"
         multiDexEnabled true
     }
 
@@ -86,6 +86,7 @@ dependencies {
 
     compile 'com.google.android.gms:play-services-auth:9.4.0'
     compile 'com.google.firebase:firebase-core:9.4.0'
+    compile 'com.google.firebase:firebase-crash:9.4.0'
     compile 'com.android.support:multidex:1.0.0'
 }
 

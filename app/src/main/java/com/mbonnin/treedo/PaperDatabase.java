@@ -241,6 +241,10 @@ public class PaperDatabase {
         if (node.text == null) {
             node.text = "";
         }
+        if (node.id > Node.maxId) {
+            Node.maxId = node.id;
+        }
+
         for (Node child : node.childList) {
             child.parent = node;
             walk(child);
@@ -261,6 +265,21 @@ public class PaperDatabase {
         } else {
             forceSave();
         }
+    }
+
+    public Node find(Node root, long id) {
+        if (root.id == id) {
+            return root;
+        }
+
+        for (Node child: root.childList) {
+            Node found = find(child, id);
+            if (found != null) {
+                return found;
+            }
+        }
+
+        return null;
     }
 
 

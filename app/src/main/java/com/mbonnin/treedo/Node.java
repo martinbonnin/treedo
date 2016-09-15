@@ -7,9 +7,12 @@ import java.util.ArrayList;
  */
 
 public class Node {
+    public static long maxId;
+
     public String text = "";
     public boolean checked;
     public boolean folder;
+    public long id;
 
     public transient boolean trash;
     /**
@@ -18,6 +21,10 @@ public class Node {
     public transient Node parent;
 
     public ArrayList<Node> childList = new ArrayList<>();
+
+    public Node() {
+        id = maxId++;
+    }
 
     public Node getRoot() {
         Node node = this;

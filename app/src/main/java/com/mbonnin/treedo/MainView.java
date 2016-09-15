@@ -3,6 +3,7 @@ package com.mbonnin.treedo;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -278,6 +279,14 @@ public class MainView extends LinearLayout {
         menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         menuItem.setOnMenuItemClickListener(mOnEditClickListener);
 
+        if (mParent.getRoot() != mDb.getTrash()) {
+            menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.add_shortcut));
+            menuItem.setOnMenuItemClickListener(item -> {
+                addShortCut();
+                return true;
+            });
+        }
+
         if (mParent == mDb.getTrash()) {
             menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.empty_trash));
             menuItem.setOnMenuItemClickListener(item -> {
@@ -320,6 +329,16 @@ public class MainView extends LinearLayout {
 
         menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.action_about));
         menuItem.setOnMenuItemClickListener(mOnAboutClickListener);
+    }
+
+    private void addShortCut() {
+        ShortcutView shortcutView = ShortcutView_.build(getContext());
+        AlertDialog dialog;
+
+        dialog =new AlertDialog.Builder(getContext()).setView(shortcutView).create();
+
+        shortcutView.setDialog(dialog, mParent.text, mParent.id + "");
+        dialog.show();
     }
 
     private void setupEditToolbar() {
@@ -369,5 +388,9 @@ public class MainView extends LinearLayout {
     public void refresh() {
         toolbar.setTitle(mParent.text);
         mNodeAdapter.notifyDataSetChanged();
+    }
+
+    public Node getNode() {
+        return mParent;
     }
 }

@@ -7,7 +7,10 @@ import android.content.DialogInterface;
 import android.content.res.ColorStateList;
 import android.support.v7.widget.AppCompatButton;
 import android.util.Log;
+import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 
 import com.example.android.trivialdrivesample.util.IabException;
 import com.example.android.trivialdrivesample.util.IabHelper;
@@ -29,7 +32,7 @@ import rx.util.async.Async;
 import static com.mbonnin.treedo.InAppBilling.SKU_BEER;
 
 @EViewGroup(R.layout.beer_view)
-public class BeerView extends LinearLayout {
+public class BeerView extends FrameLayout {
     public static final String TAG = "BeerView";
 
     @Bean
@@ -41,6 +44,11 @@ public class BeerView extends LinearLayout {
     AppCompatButton growler;
     @ViewById
     AppCompatButton keg;
+    @ViewById
+    ProgressBar progressBar;
+    @ViewById
+    View buttons;
+
 
     private Dialog mDialog;
 
@@ -113,6 +121,10 @@ public class BeerView extends LinearLayout {
                     }
                 });
             }
+
+            buttons.setVisibility(VISIBLE);
+            progressBar.setVisibility(GONE);
+
         }
     };
 
@@ -128,6 +140,9 @@ public class BeerView extends LinearLayout {
         mTextList.add(R.string.buy_beer);
         mTextList.add(R.string.buy_growler);
         mTextList.add(R.string.buy_keg);
+
+        buttons.setVisibility(GONE);
+        progressBar.setVisibility(VISIBLE);
         Async.start(() -> {
             try {
                 return mInAppBilling.getHelper().queryInventory(true, mSkuList, null);
@@ -139,12 +154,5 @@ public class BeerView extends LinearLayout {
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(mObserver);
 
-    }
-
-    @AfterViews
-    void afterViews() {
-        setOrientation(VERTICAL);
-        int px = (int)Utils.toPixels(30);
-        setPadding(px, px, px, px);
     }
 }

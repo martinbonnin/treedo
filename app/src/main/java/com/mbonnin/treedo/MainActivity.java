@@ -7,7 +7,6 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -25,7 +24,6 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 
-import com.example.android.trivialdrivesample.util.IabHelper;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.tasks.RuntimeExecutionException;
@@ -74,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
     public static final int ACTIVITY_RESULT_IAB_FINISHED = 5;
 
     private static final int PERMISSION_RESULT_GET_ACCOUNTS = 1;
+    public static final String EXTRA_ID = "EXTRA_ID";
 
     private static MainActivity sActivity;
 
@@ -140,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d("timing", "closeInpu: " + System.currentTimeMillis());
         closeSoftInput();
 
+
         Utils.log("setView took " + (System.currentTimeMillis() - start) + " ms");
     }
 
@@ -148,14 +148,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void popMainView() {
-        if (mStack.size() <= 1) {
-            moveTaskToBack(true);
+        if (mStack.size() > 1) {
+            mStack.pop();
+            mStack.peek().refresh();
+            setView(mStack.peek(), AnimatedFrameLayout.ANIMATE_EXIT);
             return;
+        } else if (mStack.size() == 1) {
+            MainView mainView = mStack.peek();
+            Node parent = mainView.getNode().parent;
+            if (parent != null) {
+                /**
+                 * we came through a deeplink, so we must create the parent
+                 */
+                mStack.pop();
+                pushNode(parent, AnimatedFrameLayout.ANIMATE_EXIT);
+                return;
+            }
         }
-        mStack.pop();
 
-        mStack.peek().refresh();
-        setView(mStack.peek(), AnimatedFrameLayout.ANIMATE_EXIT);
+        moveTaskToBack(true);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntent();
     }
 
     private void closeSoftInput() {
@@ -205,15 +223,20 @@ public class MainActivity extends AppCompatActivity {
         }
         mFileId = getPreference(PREFERENCE_FILE_ID, null);
 
-        pushNode(mDb.getRoot(), AnimatedFrameLayout.ANIMATE_NONE);
+        handleIntent();
     }
 
-    private void setRootItem() {
-        setView(null, AnimatedFrameLayout.ANIMATE_NONE);
-    }
+    private void handleIntent() {
+        Intent intent = getIntent();
+        mStack.clear();
 
-    private void flushDatabase() {
-        setRootItem();
+        Node node = mDb.getRoot();
+        if (intent == null) {
+        } else if (intent.hasExtra(EXTRA_ID)) {
+            long id = Long.parseLong(intent.getStringExtra(EXTRA_ID));
+            node = mDb.find(mDb.getRoot(), id);
+        }
+        pushNode(node, AnimatedFrameLayout.ANIMATE_NONE);
     }
 
     @Override
@@ -260,6 +283,12 @@ public class MainActivity extends AppCompatActivity {
 
     public void snackBar(String string) {
         Snackbar.make(mAnimatedFrameLayout, string, Snackbar.LENGTH_SHORT).show();
+    }
+
+    public static void snackBarG(String string) {
+        if (sActivity != null) {
+            sActivity.snackBar(string);
+        }
     }
 
     @Override

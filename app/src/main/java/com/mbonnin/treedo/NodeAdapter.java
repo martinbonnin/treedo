@@ -184,12 +184,10 @@ public class NodeAdapter extends RecyclerView.Adapter {
 
             nodeView.setOnClickListener(null);
 
-            if (mEditMode) {
-                if (mSelectedItems[getAdapterPosition()]) {
-                    nodeView.setBackgroundColor(nodeView.getContext().getResources().getColor(R.color.vibrant_50));
-                } else {
-                    nodeView.setBackgroundColor(Color.TRANSPARENT);
-                }
+            if (mEditMode && mSelectedItems[getAdapterPosition()]) {
+                nodeView.setBackgroundColor(nodeView.getContext().getResources().getColor(R.color.vibrant_50));
+            } else {
+                nodeView.setBackgroundColor(Color.TRANSPARENT);
             }
 
             nodeView.checkbox.setVisibility(node.folder || isNew ? GONE : VISIBLE);
@@ -217,17 +215,13 @@ public class NodeAdapter extends RecyclerView.Adapter {
             nodeView.arrow.setVisibility((node.folder || mEditMode) ? VISIBLE : GONE);
             nodeView.arrow.setImageResource(mEditMode ? R.drawable.handle : R.drawable.arrow);
 
-            nodeView.setOnClickListener(mEditMode ? this : null);
+            nodeView.setOnClickListener(mEditMode || node.folder ? this : null);
 
             nodeView.setOnTouchListener((v, event) -> {
                 if (mNode.folder) {
                     if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                         v.setBackgroundColor(Color.LTGRAY);
-                    } else if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-                        Log.d("timing", "pushNodeG: " + System.currentTimeMillis());
-                        MainActivity.pushNodeG(mNode);
-                        nodeView.setBackgroundColor(Color.TRANSPARENT);
-                    } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                    } else if (event.getActionMasked() == MotionEvent.ACTION_UP || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
                         nodeView.setBackgroundColor(Color.TRANSPARENT);
                     }
                 }
@@ -332,6 +326,7 @@ public class NodeAdapter extends RecyclerView.Adapter {
                     mSelectionListener.selectionChanged(count);
                 }
             } else {
+                MainActivity.pushNodeG(mNode);
             }
         }
 
