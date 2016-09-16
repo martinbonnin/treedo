@@ -296,6 +296,8 @@ public class NodeAdapter extends RecyclerView.Adapter {
                 mNode.parent.childList.remove(mNode);
                 mNode.parent = null;
                 populateList();
+            } else if (mNode == mNewItemNode) {
+                mNode.text = "";
             }
 
             mFocusPosition = getAdapterPosition() - 1;

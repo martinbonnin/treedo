@@ -20,6 +20,8 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
+import com.esotericsoftware.kryo.util.Util;
+
 import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.Bean;
 import org.androidannotations.annotations.EViewGroup;
@@ -219,6 +221,7 @@ public class MainView extends LinearLayout {
         });
         recyclerView.setLayoutManager(new LinearLayoutManager(activity));
         recyclerView.setAdapter(mNodeAdapter);
+        recyclerView.setItemViewCacheSize(50);
         recyclerView.setHasFixedSize(true);
 
         mItemTouchHelper = new ItemTouchHelper(new MyItemTouchHelperCallback(mNodeAdapter));
@@ -242,9 +245,7 @@ public class MainView extends LinearLayout {
             toolbar.setNavigationIcon(null);
             toolbar.setNavigationOnClickListener(null);
         } else {
-            Drawable d = getResources().getDrawable(R.drawable.ic_arrow_back_black_24dp);
-            DrawableCompat.setTint(d.mutate(), Color.WHITE);
-            toolbar.setNavigationIcon(d);
+            toolbar.setNavigationIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_arrow_back_black_24dp));
             toolbar.setNavigationOnClickListener(mNavigationClickListener);
             toolbar.setTitle((mParent == mDb.getTrash()) ? getContext().getString(R.string.trash) : mParent.text);
         }
@@ -252,15 +253,8 @@ public class MainView extends LinearLayout {
         menu.clear();
         MenuItem menuItem;
 
-        Drawable creatFolderDrawable = getResources().getDrawable(R.drawable.ic_create_new_folder_black_24dp);
-        DrawableCompat.setTint(creatFolderDrawable, Color.WHITE);
-        Drawable editDrawable = getResources().getDrawable(R.drawable.ic_create_black_24dp);
-        DrawableCompat.setTint(editDrawable, Color.WHITE);
-        Drawable beerDrawable = getResources().getDrawable(R.drawable.ic_beer);
-        DrawableCompat.setTint(beerDrawable, Color.WHITE);
-
         menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.beer));
-        menuItem.setIcon(beerDrawable);
+        menuItem.setIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_beer));
         menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         menuItem.setOnMenuItemClickListener(item -> {
             mInAppBilling.displayDialog(getContext());
@@ -269,13 +263,13 @@ public class MainView extends LinearLayout {
 
         if (mParent.getRoot() != mDb.getTrash()) {
             menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.new_folder));
-            menuItem.setIcon(creatFolderDrawable);
+            menuItem.setIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_create_new_folder_black_24dp));
             menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
             menuItem.setOnMenuItemClickListener(mOnNewFolderClickListener);
         }
 
         menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.edit));
-        menuItem.setIcon(editDrawable);
+        menuItem.setIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_create_black_24dp));
         menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         menuItem.setOnMenuItemClickListener(mOnEditClickListener);
 
@@ -345,42 +339,31 @@ public class MainView extends LinearLayout {
         Menu menu = editToolbar.getMenu();
         int order = 0;
 
-        Drawable d = getResources().getDrawable(R.drawable.ic_arrow_back_black_24dp);
-        DrawableCompat.setTint(d.mutate(), Color.WHITE);
-        editToolbar.setNavigationIcon(d);
+        editToolbar.setNavigationIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_arrow_back_black_24dp));
         editToolbar.setNavigationOnClickListener(item -> setEditMode(false));
 
         menu.clear();
         MenuItem menuItem;
 
-        Drawable trashDrawable = getResources().getDrawable(R.drawable.ic_delete_black_24dp);
-        DrawableCompat.setTint(trashDrawable, Color.WHITE);
-        Drawable cutDrawable = getResources().getDrawable(R.drawable.ic_content_cut_black_24dp);
-        DrawableCompat.setTint(cutDrawable, Color.WHITE);
-        Drawable copyDrawable = getResources().getDrawable(R.drawable.ic_content_copy_black_24dp);
-        DrawableCompat.setTint(copyDrawable, Color.WHITE);
-        Drawable pasteDrawable = getResources().getDrawable(R.drawable.ic_content_paste_black_24dp);
-        DrawableCompat.setTint(pasteDrawable, Color.WHITE);
-
         if (mParent.getRoot() != mDb.getTrash()) {
             menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.trash));
-            menuItem.setIcon(trashDrawable);
+            menuItem.setIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_delete_black_24dp));
             menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
             menuItem.setOnMenuItemClickListener(mOnTrashClickListener);
         }
 
         menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.cut));
-        menuItem.setIcon(cutDrawable);
+        menuItem.setIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_content_cut_black_24dp));
         menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         menuItem.setOnMenuItemClickListener(mOnCutClickListener);
 
         menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.copy));
-        menuItem.setIcon(copyDrawable);
+        menuItem.setIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_content_copy_black_24dp));
         menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         menuItem.setOnMenuItemClickListener(mOnCopyClickListener);
 
         menuItem = menu.add(Menu.NONE, Menu.NONE, order++, getContext().getString(R.string.paste));
-        menuItem.setIcon(pasteDrawable);
+        menuItem.setIcon(Utils.getWhiteDrawable(getContext(), R.drawable.ic_content_paste_black_24dp));
         menuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         menuItem.setOnMenuItemClickListener(mOnPasteClickListener);
     }

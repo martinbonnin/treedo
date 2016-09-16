@@ -21,7 +21,9 @@ import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -202,9 +204,24 @@ public class MainActivity extends AppCompatActivity {
 
         sActivity = this;
 
+
         mAnimatedFrameLayout = new AnimatedFrameLayout<>(this);
 
-        setContentView(mAnimatedFrameLayout);
+        /**
+         * Create a dummy intermediate layout to intercep focus
+         * http://stackoverflow.com/questions/1555109/stop-edittext-from-gaining-focus-at-activity-startup
+         */
+        LinearLayout linearLayout = new LinearLayout(this);
+        LinearLayout linearLayout2 = new LinearLayout(this);
+        linearLayout2.setFocusable(true);
+        linearLayout2.setFocusableInTouchMode(true);
+        LinearLayout.LayoutParams layoutParams2 = new LinearLayout.LayoutParams(0, 0);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        linearLayout.addView(linearLayout2, layoutParams2);
+        LinearLayout.LayoutParams layoutParams3 = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        linearLayout.addView(mAnimatedFrameLayout, layoutParams3);
+
+        setContentView(linearLayout);
 
         String uuid = getPreference(PREFERENCE_UUID, null);
         if (uuid == null) {

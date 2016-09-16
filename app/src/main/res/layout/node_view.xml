@@ -39,7 +39,7 @@
             android:layout_centerInParent="true"
             android:layout_toLeftOf="@+id/arrow"
             android:background="@null"
-            android:inputType="textMultiLine" />
+            android:inputType="textMultiLine|textCapSentences" />
 
         <ImageView
             android:id="@+id/arrow"

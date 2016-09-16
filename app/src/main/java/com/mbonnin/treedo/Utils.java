@@ -2,6 +2,9 @@ package com.mbonnin.treedo;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.support.v4.graphics.drawable.DrawableCompat;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.SparseArray;
@@ -65,5 +68,12 @@ public class Utils {
             i += 2;
         }
         return result + string.substring(i);
+    }
+
+    public static Drawable getWhiteDrawable(Context context, int resId) {
+        Drawable drawable = DrawableCompat.wrap(context.getResources().getDrawable(resId));
+        DrawableCompat.setTint(drawable.mutate(), Color.WHITE);
+
+        return drawable;
     }
 }

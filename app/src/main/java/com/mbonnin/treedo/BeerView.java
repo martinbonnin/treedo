@@ -32,7 +32,7 @@ import rx.util.async.Async;
 import static com.mbonnin.treedo.InAppBilling.SKU_BEER;
 
 @EViewGroup(R.layout.beer_view)
-public class BeerView extends FrameLayout {
+public class BeerView extends LinearLayout {
     public static final String TAG = "BeerView";
 
     @Bean
@@ -154,5 +154,12 @@ public class BeerView extends FrameLayout {
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(mObserver);
 
+    }
+
+    @AfterViews
+    void afterViews() {
+        setOrientation(VERTICAL);
+        int px = (int) Utils.toPixels(30);
+        setPadding(px, px, px, px);
     }
 }

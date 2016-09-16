@@ -84,7 +84,7 @@ public class ShortcutAdapter extends RecyclerView.Adapter {
             resId = R.drawable.ic_treedo_empty;
         }
         Drawable drawable = imageView.getContext().getResources().getDrawable(resId);
-        DrawableCompat.setTint(drawable, mColorList.get(position));
+        DrawableCompat.setTint(DrawableCompat.wrap(drawable).mutate(), mColorList.get(position));
         imageView.setImageDrawable(drawable);
         imageView.setOnClickListener(v-> {
             if (position != mSelectedPosition) {

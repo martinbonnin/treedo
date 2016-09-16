@@ -19,8 +19,8 @@ android {
         applicationId "com.mbonnin.treedo"
         minSdkVersion 14
         targetSdkVersion 24
-        versionCode 106
-        versionName "106"
+        versionCode 107
+        versionName "107"
         multiDexEnabled true
     }
 
