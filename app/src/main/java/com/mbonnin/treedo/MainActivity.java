@@ -173,6 +173,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onNewIntent(Intent intent) {
+        /**
+         * this will most likely not be called since we are in 'singleTask' launchMode and the activity will be recreated
+         * when started from shortcuts.
+         * I'm keeping it just in case...
+         */
         super.onNewIntent(intent);
         setIntent(intent);
         handleIntent();
