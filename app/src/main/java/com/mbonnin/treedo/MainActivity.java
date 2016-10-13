@@ -258,9 +258,11 @@ public class MainActivity extends AppCompatActivity {
             long id = Long.parseLong(intent.getStringExtra(EXTRA_ID));
             node = mDb.find(mDb.getRoot(), id);
         }
-        if (node != null) {
-            pushNode(node, AnimatedFrameLayout.ANIMATE_NONE);
+        if (node == null) {
+            node = mDb.getRoot();
+            snackBar(getString(R.string.node_deleted));
         }
+        pushNode(node, AnimatedFrameLayout.ANIMATE_NONE);
     }
 
     @Override

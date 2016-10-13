@@ -70,5 +70,6 @@
     <string name="shorcut_color">Icon</string>
     <string name="add_shortcut_title">Add Shortcut</string>
     <string name="support_me">Support the development of TreeDo</string>
+    <string name="node_deleted">This folder has been deleted, please update your shortcut</string>
 
 </resources>
