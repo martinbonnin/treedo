@@ -69,7 +69,7 @@ dependencies {
     compile "com.android.support:design:$supportLibVersion"
     compile "com.android.support:recyclerview-v7:$supportLibVersion"
     compile 'com.google.code.gson:gson:2.7'
-    compile 'io.paperdb:paperdb:1.5'
+    compile 'io.paperdb:paperdb:2.6'
     apt "org.androidannotations:androidannotations:$AAVersion"
     compile "org.androidannotations:androidannotations-api:$AAVersion"
 
