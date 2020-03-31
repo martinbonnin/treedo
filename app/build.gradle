@@ -44,7 +44,7 @@ android {
 
 ext {
     supportLibVersion = '24.2.0'
-    AAVersion = '4.1.0'
+    AAVersion = '4.7.0'
 }
 
 
